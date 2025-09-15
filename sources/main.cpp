@@ -9,7 +9,12 @@
 // yay you did your first dream
 
 #include <functional>
+
+#define MINIAUDIO_IMPLEMENTATION
+#include "../deps/miniaudio.h"
+
 #include "../headers/graphics_backend.hxx"
+#include "../headers/collisions.hxx"
 
 const unsigned int window_width = 640;
 const unsigned int window_height = 420;
@@ -17,22 +22,23 @@ const unsigned int window_height = 420;
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 void mouse_callback(GLFWwindow *window, double xpos, double ypos);
 void processInput(GLFWwindow *window);
-void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods);
 
-double delta_time = 0.0, lastTime = 0.0, currentTime = 0.0;
+double delta_time = 0.0,
+       lastTime = 0.0, currentTime = 0.0;
 glm::vec3 cameraPos = glm::vec3(0.0, 0.0, 3.0);
 glm::vec3 cameraFront = glm::vec3(0.0, 0.0, -1.0);
 glm::vec3 cameraXZFront = glm::vec3(0.0, 0.0, -1.0);
 glm::vec3 up = glm::vec3(0.0, 1.0, 0.0);
 glm::vec3 cameraRight = glm::vec3(0.0);
 glm::vec3 cameraDirection = glm::vec3(0.0);
-const double CAMERA_SPEED = 4.0;
+glm::vec3 cameraVelocity = glm::vec3(0.0);
+const double CAMERA_SPEED = 400.0;
 
 double pitch = 0.0, yaw = -90.0;
 double cameraFloor = 0.0;
 double jump_velocity = 4.0;
-double cameraVelocityY = 0.0, cameraGravity = -9.81;
-double cameraVelocityX = 0.0, cameraVelocityZ = 0.0;
+double cameraGravity = -9.81;
+bool onGround = false;
 
 double mouseX, mouseY;
 
@@ -43,7 +49,9 @@ void main_loop(void *mLoopArg)
 {
     loop();
 }
-
+ma_result result;
+ma_engine engine;
+ma_sound music, landsfx, stepsfx;
 int main()
 {
     if (!glfwInit())
@@ -87,67 +95,146 @@ int main()
     shader_main.setMat4("projection", proj);
 
     glfwSetCursorPosCallback(window, mouse_callback);
-    glfwSetKeyCallback(window, key_callback);
 
-    cube c1, c2, c3, c4, floorcube; // define some default cubes (position 0-0-0 with size 1-1-1)
+    cube c1, c2, c3, c4, floorcube;
 
-    texture t1, t2, t3;           // define some empty textures
-    t1.Set(0, "./img/brick.png"); // give the textures an id and an image
+    texture t1, t2, t3;
+    t1.Set(0, "./img/brick.png");
     t2.Set(1, "./img/cargo.png");
     t3.Set(2, "./img/dirt.png");
-    c1.Image(0); // set the cubes' texture id to the id of the textures
+    c1.Image(0);
     c2.Image(1);
     c3.Image(2);
     c4.Image(1);
     floorcube.Image(0);
+    floorcube.Put(0.0, -1.0, 0.0);
+    floorcube.Scale(40.0, 1.0, 40.0);
+    std::vector<cube *> worldcubes;
+    worldcubes.push_back(&floorcube);
+    worldcubes.push_back(&c1);
+    worldcubes.push_back(&c2);
+    worldcubes.push_back(&c3);
+    worldcubes.push_back(&c4);
+
+    aabb floorcubecol = makeAABB(floorcube.getPos(), floorcube.getScale());
+    aabb c1col = makeAABB(c1.getPos(), c1.getScale());
+    aabb c2col = makeAABB(c2.getPos(), c2.getScale());
+    aabb c3col = makeAABB(c3.getPos(), c3.getScale());
+    aabb c4col = makeAABB(c4.getPos(), c4.getScale());
+    aabb plcol = makeAABB(glm::vec3(0.0), glm::vec3(0.5, 1.75, 0.5));
+
+    std::vector<aabb *> worldboxes;
+    worldboxes.push_back(&floorcubecol);
+    worldboxes.push_back(&c1col);
+    worldboxes.push_back(&c2col);
+    worldboxes.push_back(&c3col);
+    worldboxes.push_back(&c4col);
 
     glfwFocusWindow(window);
 
-    loop = [&] // main loop
+    bool testbool = false;
+
+    result = ma_engine_init(NULL, &engine);
+    if (result != MA_SUCCESS)
     {
-        lastTime = currentTime; // delta_time setup (the thing that makes stuff move smoothly)
+        return -1; // Failed to initialize the engine.
+    }
+
+    result = ma_sound_init_from_file(&engine, "./snd/weary.mp3", 0, NULL, NULL, &music);
+    if (result != MA_SUCCESS)
+    {
+        return -1;
+    }
+    result = ma_sound_init_from_file(&engine, "./snd/land.wav", 0, NULL, NULL, &landsfx);
+    if (result != MA_SUCCESS)
+    {
+        return -1;
+    }
+    result = ma_sound_init_from_file(&engine, "./snd/step.wav", 0, NULL, NULL, &stepsfx);
+    if (result != MA_SUCCESS)
+    {
+        return -1;
+    }
+    ma_sound_start(&music);
+
+    loop = [&]
+    {
+        if (ma_sound_at_end(&music))
+        {
+            ma_sound_seek_to_pcm_frame(&music, 0);
+        }
+
+        lastTime = currentTime;
         currentTime = glfwGetTime();
         delta_time = currentTime - lastTime;
+
+        processInput(window);
 
         if (cameraPos.y < -25.0)
         {
             cameraPos = glm::vec3(0.0, 25.0, -3.0);
         }
-        if (cameraPos.y > cameraFloor || cameraPos.x < -20.0 || cameraPos.x > 20.0 || cameraPos.z < -20.0 || cameraPos.z > 20.0) // gravity code
-        {
-            cameraVelocityY += cameraGravity * delta_time;
-        }
-        else if (cameraPos.y < cameraFloor && cameraPos.y > cameraFloor - 5.0 &&
-                 cameraPos.x >= -20.0 && cameraPos.x <= 20.0 && cameraPos.z >= -20.0 && cameraPos.z <= 20.0)
-        {
-            cameraPos.y = cameraFloor;
-            cameraVelocityY = 0.0;
-        }
-        cameraPos.y += cameraVelocityY * delta_time;
-        cameraPos.x += cameraVelocityX * delta_time;
-        cameraPos.z += cameraVelocityZ * delta_time;
 
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // reset the background every frame so it don't look funny
+        onGround = false;
+
+        putCollision(&plcol, cameraPos);
+        for (int i = 0; i < worldboxes.size(); ++i)
+        {
+            worldboxes[i]->pos = worldcubes[i]->getPos();
+            worldboxes[i]->scale = worldcubes[i]->getScale();
+            collision col = normal_collision(&plcol, worldboxes[i], cameraVelocity * static_cast<float>(delta_time), glm::vec3(0.0));
+            if (col.hit)
+            {
+                cameraPos = col.hitLocation;
+                putCollision(&plcol, cameraPos);
+                for (int j = 0; j < 3; ++j)
+                {
+                    if (j == 1 && col.normal[j] > 0)
+                    {
+                        if (cameraVelocity.y < 0.0)
+                        {
+                            ma_sound_start(&landsfx);
+                        }
+                        onGround = true;
+                    }
+                    if (col.normal[j] < 0 && cameraVelocity[j] > 0.0)
+                    {
+                        cameraVelocity[j] = 0.0;
+                    }
+                    if (col.normal[j] > 0 && cameraVelocity[j] < 0.0)
+                    {
+                        cameraVelocity[j] = 0.0;
+                    }
+                }
+            }
+        }
+        if (!onGround)
+            cameraVelocity.y += cameraGravity * delta_time;
+
+        cameraPos.y += cameraVelocity.y * delta_time;
+        cameraPos.x += cameraVelocity.x * delta_time;
+        cameraPos.z += cameraVelocity.z * delta_time;
+        cameraVelocity.x = 0.0;
+        cameraVelocity.z = 0.0;
+
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glClearColor(0.4, 0.6, 0.9, 1.0);
 
-        processInput(window); // movement
+        // std::cout << cameraPos.z << " vs " << c1col.pos.z << " and " << plcol.pos.z << " huh\n";
 
         view = glm::lookAt(cameraPos, cameraPos + cameraFront, up);
         shader_main.setMat4("view", view);
 
-        c2.Put(0.0, 0.5 + static_cast<float>(std::sin(glfwGetTime())), -4.0); // cube 2 transformations
+        c2.Put(0.0, 0.5 + static_cast<float>(std::sin(glfwGetTime())), -4.0);
 
-        c3.Put(4.0, 1.0, 2.0); // cube 3 transformation
+        c3.Put(4.0, 1.0, 2.0);
         c3.Scale(0.5, 0.5, 0.5);
         c3.Rotate(0.0, static_cast<float>(glfwGetTime()), 0.0);
 
-        c4.Put(7.0 + static_cast<float>(std::sin(glfwGetTime())), 1.5 + static_cast<float>(std::sin(glfwGetTime())), 7.0); // cube 4 transformation
+        c4.Put(7.0 + static_cast<float>(std::sin(glfwGetTime())), 1.5 + static_cast<float>(std::sin(glfwGetTime())), 7.0);
         c4.Scale(4.0 + static_cast<float>(std::sin(glfwGetTime()) * 2.0), 4.0 + static_cast<float>(std::sin(glfwGetTime()) * 2.0), 2.0);
 
-        floorcube.Put(0.0, -1.0, 0.0); // floor cube transformation
-        floorcube.Scale(40.0, 1.0, 40.0);
-
-        c1.draw(shader_main); // draw cubes
+        c1.draw(shader_main);
         c2.draw(shader_main);
         c3.draw(shader_main, TRANSFORM_ROTATION_FIRST);
         c4.draw(shader_main);
@@ -216,27 +303,38 @@ void mouse_callback(GLFWwindow *window, double xpos, double ypos)
         glfwFocusWindow(window);
     }
 }
+
+double stepTimer = 5.0;
 void processInput(GLFWwindow *window)
 {
+    if (stepTimer < 0.0 && onGround)
+    {
+        stepTimer = 5.0;
+        ma_sound_start(&stepsfx);
+    }
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
     {
-        cameraPos += cameraXZFront * static_cast<float>(CAMERA_SPEED * delta_time);
+        cameraVelocity += cameraXZFront * static_cast<float>(CAMERA_SPEED * delta_time);
+        stepTimer -= 15.0 * delta_time;
     }
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
     {
-        cameraPos -= cameraXZFront * static_cast<float>(CAMERA_SPEED * delta_time);
+        cameraVelocity -= cameraXZFront * static_cast<float>(CAMERA_SPEED * delta_time);
+        stepTimer -= 15.0 * delta_time;
     }
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
     {
-        cameraPos -= cameraRight * static_cast<float>(CAMERA_SPEED * delta_time);
+        cameraVelocity -= cameraRight * static_cast<float>(CAMERA_SPEED * delta_time);
+        stepTimer -= 15.0 * delta_time;
     }
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
     {
-        cameraPos += cameraRight * static_cast<float>(CAMERA_SPEED * delta_time);
+        cameraVelocity += cameraRight * static_cast<float>(CAMERA_SPEED * delta_time);
+        stepTimer -= 15.0 * delta_time;
     }
-    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && cameraPos.y == cameraFloor)
+    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && onGround)
     {
-        cameraVelocityY = jump_velocity;
+        cameraVelocity.y = jump_velocity;
     }
 
     if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS)
@@ -253,68 +351,20 @@ void processInput(GLFWwindow *window)
         glfwSetWindowShouldClose(window, true);
     }
 
-    if (mouseY > (window_height - (window_height * 0.25)) && glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_1) == GLFW_PRESS)
-    {
-        cameraPos -= cameraXZFront * static_cast<float>(CAMERA_SPEED * delta_time);
-    }
-    if (mouseY < (window_height * 0.25) && glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_1) == GLFW_PRESS)
-    {
-        cameraPos += cameraXZFront * static_cast<float>(CAMERA_SPEED * delta_time);
-    }
-    if (mouseX > (window_width - (window_width * 0.25)) && glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_1) == GLFW_PRESS)
-    {
-        cameraPos += cameraRight * static_cast<float>(CAMERA_SPEED * delta_time);
-    }
-    if (mouseX < (window_width * 0.25) && glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_1) == GLFW_PRESS)
-    {
-        cameraPos -= cameraRight * static_cast<float>(CAMERA_SPEED * delta_time);
-    }
-}
-
-void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods)
-{
-    // if (key == GLFW_KEY_W && action == GLFW_RELEASE)
-    // {
-    //     // cameraPos += cameraXZFront * static_cast<float>(CAMERA_SPEED * delta_time);
-    //     cameraVelocityX = 0.0;
-    //     cameraVelocityZ = 0.0;
-    //     std::cout << "forward, release key_callback\n";
-    // }
-    // if (key == GLFW_KEY_W && action == GLFW_PRESS)
-    // {
-    //     // cameraPos += cameraXZFront * static_cast<float>(CAMERA_SPEED * delta_time);
-    //     cameraVelocityX = cameraXZFront.x * static_cast<float>(CAMERA_SPEED);
-    //     cameraVelocityZ = cameraXZFront.z * static_cast<float>(CAMERA_SPEED);
-    //     std::cout << "forward, key_callback\n";
-    // }
-    // if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+    // if (mouseY > (window_height - (window_height * 0.25)) && glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_1) == GLFW_PRESS)
     // {
     //     cameraPos -= cameraXZFront * static_cast<float>(CAMERA_SPEED * delta_time);
     // }
-    // if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+    // if (mouseY < (window_height * 0.25) && glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_1) == GLFW_PRESS)
     // {
-    //     cameraPos -= cameraRight * static_cast<float>(CAMERA_SPEED * delta_time);
+    //     cameraPos += cameraXZFront * static_cast<float>(CAMERA_SPEED * delta_time);
     // }
-    // if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+    // if (mouseX > (window_width - (window_width * 0.25)) && glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_1) == GLFW_PRESS)
     // {
     //     cameraPos += cameraRight * static_cast<float>(CAMERA_SPEED * delta_time);
     // }
-    // if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && cameraPos.y == cameraFloor)
+    // if (mouseX < (window_width * 0.25) && glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_1) == GLFW_PRESS)
     // {
-    //     cameraVelocityY = jump_velocity;
-    // }
-
-    // if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS)
-    // {
-    //     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-    // }
-    // if (glfwGetKey(window, GLFW_KEY_G) == GLFW_PRESS)
-    // {
-    //     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-    // }
-
-    // if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-    // {
-    //     glfwSetWindowShouldClose(window, true);
+    //     cameraPos -= cameraRight * static_cast<float>(CAMERA_SPEED * delta_time);
     // }
 }

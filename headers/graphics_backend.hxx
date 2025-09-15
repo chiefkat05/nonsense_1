@@ -102,6 +102,15 @@ private:
     glm::vec3 position = glm::vec3(0.0), scale = glm::vec3(1.0), rotation = glm::vec3(0.0);
 
 public:
+    glm::vec3 getPos()
+    {
+        return position;
+    }
+    glm::vec3 getScale()
+    {
+        return scale;
+    }
+
     void Put(glm::vec3 pos);
     void Put(double x = 0.0, double y = 0.0, double z = 0.0);
     void Scale(glm::vec3 scl);
