@@ -4,6 +4,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <vector>
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
@@ -129,9 +130,24 @@ class texture
 {
 private:
     unsigned int id;
+    unsigned int pixel_width, pixel_height;
 
 public:
     void Set(unsigned int index, const char *path);
+    unsigned int getWidth();
+    unsigned int getHeight();
+    glm::ivec2 getSize();
+};
+
+class texturegroup
+{
+private:
+    std::vector<texture> textures;
+    unsigned int texture_count = 0;
+
+public:
+    texture *getTextureAtIndex(unsigned int index);
+    void addTexture(unsigned int index, const char *path);
 };
 
 #endif

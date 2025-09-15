@@ -31,6 +31,7 @@ void processInput(GLFWwindow *window);
 double delta_time = 0.0,
        lastTime = 0.0, currentTime = 0.0;
 glm::vec3 cameraPos = glm::vec3(0.0, 0.0, 3.0);
+glm::vec3 cameraOffset = glm::vec3(0.0, 0.5, 0.0);
 glm::vec3 cameraFront = glm::vec3(0.0, 0.0, -1.0);
 glm::vec3 cameraXZFront = glm::vec3(0.0, 0.0, -1.0);
 glm::vec3 up = glm::vec3(0.0, 1.0, 0.0);
@@ -58,6 +59,7 @@ ma_engine engine;
 ma_sound music, landsfx, stepsfx;
 
 game mainGame;
+texturegroup allTextures;
 
 int main()
 {
@@ -103,42 +105,11 @@ int main()
 
     glfwSetCursorPosCallback(window, mouse_callback);
 
-    // cube c1, c2, c3, c4, floorcube;
-
-    texture t1, t2, t3, t4;
-    t1.Set(0, "./img/brick.png");
-    t2.Set(1, "./img/cargo.png");
-    t3.Set(2, "./img/dirt.png");
-    t4.Set(3, "./img/sign.png");
-    // c1.Image(0);
-    // c2.Image(1);
-    // c3.Image(2);
-    // c4.Image(1);
-    // floorcube.Image(0);
-    // floorcube.Put(0.0, -1.0, 0.0);
-    // floorcube.Scale(40.0, 1.0, 40.0);
-    // std::vector<cube *> worldcubes;
-    // worldcubes.push_back(&floorcube);
-    // worldcubes.push_back(&c1);
-    // worldcubes.push_back(&c2);
-    // worldcubes.push_back(&c3);
-    // worldcubes.push_back(&c4);
-
-    // aabb floorcubecol = makeAABB(floorcube.getPos(), floorcube.getScale());
-    // aabb c1col = makeAABB(c1.getPos(), c1.getScale());
-    // aabb c2col = makeAABB(c2.getPos(), c2.getScale());
-    // aabb c3col = makeAABB(c3.getPos(), c3.getScale());
-    // aabb c4col = makeAABB(c4.getPos(), c4.getScale());
+    allTextures.addTexture(0, "./img/brick.png");
+    allTextures.addTexture(1, "./img/cargo.png");
+    allTextures.addTexture(2, "./img/dirt.png");
+    allTextures.addTexture(3, "./img/sign.png");
     aabb plcol = makeAABB(glm::vec3(0.0), glm::vec3(0.5, 1.75, 0.5));
-
-    // std::vector<aabb *> worldboxes;
-    // worldboxes.push_back(&floorcubecol);
-    // worldboxes.push_back(&c1col);
-    // worldboxes.push_back(&c2col);
-    // worldboxes.push_back(&c3col);
-    // worldboxes.push_back(&c4col);
-
-    glfwFocusWindow(window);
 
     bool testbool = false;
 
@@ -192,7 +163,8 @@ int main()
         mainGame.update(shader_main, delta_time, cameraPos, cameraVelocity, plcol, onGround);
         // std::cout << cameraPos.z << " vs " << c1col.pos.z << " and " << plcol.pos.z << " huh\n";
 
-        view = glm::lookAt(cameraPos, cameraPos + cameraFront, up);
+        cameraOffset = cameraPos + glm::vec3(0.0, 0.5, 0.0);
+        view = glm::lookAt(cameraOffset, cameraPos + cameraFront, up);
         shader_main.setMat4("view", view);
 
         // c2.Put(0.0, 0.5 + static_cast<float>(std::sin(glfwGetTime())), -4.0);

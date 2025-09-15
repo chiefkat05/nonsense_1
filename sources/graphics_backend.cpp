@@ -3,6 +3,9 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "../stb/stb_image.h"
 
+extern texturegroup allTextures;
+float pixel_scale = 16.0;
+
 void graphics_init()
 {
     stbi_set_flip_vertically_on_load(true);
@@ -195,7 +198,9 @@ void cube::draw(shader &_shader, transform_order_type transformOrder)
         break;
     }
     // _shader.setDouble("texture_scale", std::max(std::max(scale.x, scale.y), scale.z));
-    _shader.setVec3("texture_scale", scale);
+    // to do pixel size you need texture x and y
+    _shader.setVec3("texture_scale", scale * pixel_scale);
+    _shader.setVec2("texture_pixel_scale", glm::vec2(1.0) / glm::vec2(allTextures.getTextureAtIndex(textureIndex)->getSize()));
     _shader.setMat4("model", model);
 
     glBindVertexArray(VAO);
@@ -247,4 +252,36 @@ void texture::Set(unsigned int index, const char *path)
         std::cout << "Failed to load texture at path \"" << path << "\"." << std::endl;
     }
     stbi_image_free(data);
+
+    pixel_width = width;
+    pixel_height = height;
+}
+unsigned int texture::getWidth()
+{
+    return pixel_width;
+}
+unsigned int texture::getHeight()
+{
+    return pixel_height;
+}
+glm::ivec2 texture::getSize()
+{
+    return glm::ivec2(pixel_width, pixel_height);
+}
+texture *texturegroup::getTextureAtIndex(unsigned int index)
+{
+    if (index >= texture_count)
+    {
+        std::cout << "No texture at index " << index << "!" << std::endl;
+        return nullptr;
+    }
+
+    return &textures[index];
+}
+void texturegroup::addTexture(unsigned int index, const char *path)
+{
+    texture newTexture;
+    newTexture.Set(index, path);
+    textures.push_back(newTexture);
+    ++texture_count;
 }
