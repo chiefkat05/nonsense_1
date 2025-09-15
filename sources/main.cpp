@@ -8,13 +8,18 @@
 // upload to websats
 // yay you did your first dream
 
+#define DEBUG
+
 #include <functional>
+
+#ifndef DEBUG
+#include <sys/resource.h>
+#endif
 
 #define MINIAUDIO_IMPLEMENTATION
 #include "../deps/miniaudio.h"
 
-#include "../headers/graphics_backend.hxx"
-#include "../headers/collisions.hxx"
+#include "../headers/system.hxx"
 
 const unsigned int window_width = 640;
 const unsigned int window_height = 420;
@@ -37,7 +42,6 @@ const double CAMERA_SPEED = 400.0;
 double pitch = 0.0, yaw = -90.0;
 double cameraFloor = 0.0;
 double jump_velocity = 4.0;
-double cameraGravity = -9.81;
 bool onGround = false;
 
 double mouseX, mouseY;
@@ -52,6 +56,9 @@ void main_loop(void *mLoopArg)
 ma_result result;
 ma_engine engine;
 ma_sound music, landsfx, stepsfx;
+
+game mainGame;
+
 int main()
 {
     if (!glfwInit())
@@ -91,44 +98,45 @@ int main()
     glm::mat4 view = glm::mat4(1.0f);
     view = glm::translate(view, glm::vec3(0.0f, 0.0f, -4.0f));
 
-    glm::mat4 proj = glm::perspective(glm::radians(45.0f), (float)window_width / (float)window_height, 0.1f, 20.0f);
+    glm::mat4 proj = glm::perspective(glm::radians(65.0f), (float)window_width / (float)window_height, 0.1f, 100.0f);
     shader_main.setMat4("projection", proj);
 
     glfwSetCursorPosCallback(window, mouse_callback);
 
-    cube c1, c2, c3, c4, floorcube;
+    // cube c1, c2, c3, c4, floorcube;
 
-    texture t1, t2, t3;
+    texture t1, t2, t3, t4;
     t1.Set(0, "./img/brick.png");
     t2.Set(1, "./img/cargo.png");
     t3.Set(2, "./img/dirt.png");
-    c1.Image(0);
-    c2.Image(1);
-    c3.Image(2);
-    c4.Image(1);
-    floorcube.Image(0);
-    floorcube.Put(0.0, -1.0, 0.0);
-    floorcube.Scale(40.0, 1.0, 40.0);
-    std::vector<cube *> worldcubes;
-    worldcubes.push_back(&floorcube);
-    worldcubes.push_back(&c1);
-    worldcubes.push_back(&c2);
-    worldcubes.push_back(&c3);
-    worldcubes.push_back(&c4);
+    t4.Set(3, "./img/sign.png");
+    // c1.Image(0);
+    // c2.Image(1);
+    // c3.Image(2);
+    // c4.Image(1);
+    // floorcube.Image(0);
+    // floorcube.Put(0.0, -1.0, 0.0);
+    // floorcube.Scale(40.0, 1.0, 40.0);
+    // std::vector<cube *> worldcubes;
+    // worldcubes.push_back(&floorcube);
+    // worldcubes.push_back(&c1);
+    // worldcubes.push_back(&c2);
+    // worldcubes.push_back(&c3);
+    // worldcubes.push_back(&c4);
 
-    aabb floorcubecol = makeAABB(floorcube.getPos(), floorcube.getScale());
-    aabb c1col = makeAABB(c1.getPos(), c1.getScale());
-    aabb c2col = makeAABB(c2.getPos(), c2.getScale());
-    aabb c3col = makeAABB(c3.getPos(), c3.getScale());
-    aabb c4col = makeAABB(c4.getPos(), c4.getScale());
+    // aabb floorcubecol = makeAABB(floorcube.getPos(), floorcube.getScale());
+    // aabb c1col = makeAABB(c1.getPos(), c1.getScale());
+    // aabb c2col = makeAABB(c2.getPos(), c2.getScale());
+    // aabb c3col = makeAABB(c3.getPos(), c3.getScale());
+    // aabb c4col = makeAABB(c4.getPos(), c4.getScale());
     aabb plcol = makeAABB(glm::vec3(0.0), glm::vec3(0.5, 1.75, 0.5));
 
-    std::vector<aabb *> worldboxes;
-    worldboxes.push_back(&floorcubecol);
-    worldboxes.push_back(&c1col);
-    worldboxes.push_back(&c2col);
-    worldboxes.push_back(&c3col);
-    worldboxes.push_back(&c4col);
+    // std::vector<aabb *> worldboxes;
+    // worldboxes.push_back(&floorcubecol);
+    // worldboxes.push_back(&c1col);
+    // worldboxes.push_back(&c2col);
+    // worldboxes.push_back(&c3col);
+    // worldboxes.push_back(&c4col);
 
     glfwFocusWindow(window);
 
@@ -137,7 +145,7 @@ int main()
     result = ma_engine_init(NULL, &engine);
     if (result != MA_SUCCESS)
     {
-        return -1; // Failed to initialize the engine.
+        return -1;
     }
 
     result = ma_sound_init_from_file(&engine, "./snd/weary.mp3", 0, NULL, NULL, &music);
@@ -157,6 +165,14 @@ int main()
     }
     ma_sound_start(&music);
 
+    mainGame.setup_level("./levels/spawn.l");
+    mainGame.goto_level(0);
+
+    cube c1;
+    c1.Put(0.0, -1.0, 0.0);
+    c1.Scale(4.0, 0.5, 4.0);
+    c1.Image(2);
+
     loop = [&]
     {
         if (ma_sound_at_end(&music))
@@ -170,75 +186,29 @@ int main()
 
         processInput(window);
 
-        if (cameraPos.y < -25.0)
-        {
-            cameraPos = glm::vec3(0.0, 25.0, -3.0);
-        }
-
-        onGround = false;
-
-        putCollision(&plcol, cameraPos);
-        for (int i = 0; i < worldboxes.size(); ++i)
-        {
-            worldboxes[i]->pos = worldcubes[i]->getPos();
-            worldboxes[i]->scale = worldcubes[i]->getScale();
-            collision col = normal_collision(&plcol, worldboxes[i], cameraVelocity * static_cast<float>(delta_time), glm::vec3(0.0));
-            if (col.hit)
-            {
-                cameraPos = col.hitLocation;
-                putCollision(&plcol, cameraPos);
-                for (int j = 0; j < 3; ++j)
-                {
-                    if (j == 1 && col.normal[j] > 0)
-                    {
-                        if (cameraVelocity.y < 0.0)
-                        {
-                            ma_sound_start(&landsfx);
-                        }
-                        onGround = true;
-                    }
-                    if (col.normal[j] < 0 && cameraVelocity[j] > 0.0)
-                    {
-                        cameraVelocity[j] = 0.0;
-                    }
-                    if (col.normal[j] > 0 && cameraVelocity[j] < 0.0)
-                    {
-                        cameraVelocity[j] = 0.0;
-                    }
-                }
-            }
-        }
-        if (!onGround)
-            cameraVelocity.y += cameraGravity * delta_time;
-
-        cameraPos.y += cameraVelocity.y * delta_time;
-        cameraPos.x += cameraVelocity.x * delta_time;
-        cameraPos.z += cameraVelocity.z * delta_time;
-        cameraVelocity.x = 0.0;
-        cameraVelocity.z = 0.0;
-
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glClearColor(0.4, 0.6, 0.9, 1.0);
 
+        mainGame.update(shader_main, delta_time, cameraPos, cameraVelocity, plcol, onGround);
         // std::cout << cameraPos.z << " vs " << c1col.pos.z << " and " << plcol.pos.z << " huh\n";
 
         view = glm::lookAt(cameraPos, cameraPos + cameraFront, up);
         shader_main.setMat4("view", view);
 
-        c2.Put(0.0, 0.5 + static_cast<float>(std::sin(glfwGetTime())), -4.0);
+        // c2.Put(0.0, 0.5 + static_cast<float>(std::sin(glfwGetTime())), -4.0);
 
-        c3.Put(4.0, 1.0, 2.0);
-        c3.Scale(0.5, 0.5, 0.5);
-        c3.Rotate(0.0, static_cast<float>(glfwGetTime()), 0.0);
+        // c3.Put(4.0, 1.0, 2.0);
+        // c3.Scale(0.5, 0.5, 0.5);
+        // c3.Rotate(0.0, static_cast<float>(glfwGetTime()), 0.0);
 
-        c4.Put(7.0 + static_cast<float>(std::sin(glfwGetTime())), 1.5 + static_cast<float>(std::sin(glfwGetTime())), 7.0);
-        c4.Scale(4.0 + static_cast<float>(std::sin(glfwGetTime()) * 2.0), 4.0 + static_cast<float>(std::sin(glfwGetTime()) * 2.0), 2.0);
+        // c4.Put(7.0 + static_cast<float>(std::sin(glfwGetTime())), 1.5 + static_cast<float>(std::sin(glfwGetTime())), 7.0);
+        // c4.Scale(4.0 + static_cast<float>(std::sin(glfwGetTime()) * 2.0), 4.0 + static_cast<float>(std::sin(glfwGetTime()) * 2.0), 2.0);
 
-        c1.draw(shader_main);
-        c2.draw(shader_main);
-        c3.draw(shader_main, TRANSFORM_ROTATION_FIRST);
-        c4.draw(shader_main);
-        floorcube.draw(shader_main);
+        // c1.draw(shader_main);
+        // c2.draw(shader_main);
+        // c3.draw(shader_main, TRANSFORM_ROTATION_FIRST);
+        // c4.draw(shader_main);
+        // floorcube.draw(shader_main);
 
         glfwSwapBuffers((GLFWwindow *)window);
         glfwPollEvents();
