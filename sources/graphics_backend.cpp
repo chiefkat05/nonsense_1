@@ -290,6 +290,7 @@ void model_primitive::draw(shader &_shader, transform_order_type transformOrder)
 
 model_primitive::model_primitive(model_primitive_type type)
 {
+    std::cout << type << " huh\n";
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
 

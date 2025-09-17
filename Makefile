@@ -21,9 +21,9 @@ windows: ./sources/*.cpp
 web:
 	mkdir -p ./webbuild
 	emcc --use-port=emdawnwebgpu -sSTACK_SIZE=128kb --use-port=contrib.glfw3:disableMultiWindow=true ./deps/miniaudio.c ./sources/*.cpp -o ./webbuild/index.html -s WASM=1 -s DISABLE_EXCEPTION_CATCHING=1 -s ENVIRONMENT=web --preload-file shaders --preload-file img --preload-file snd --preload-file levels
-	cp index.html.bak ./webbuild/
-	rm -rf ./webbuild/index.html
-	mv ./webbuild/index.html.bak ./webbuild/index.html
+# 	cp index.html.bak ./webbuild/
+# 	rm -rf ./webbuild/index.html
+# 	mv ./webbuild/index.html.bak ./webbuild/index.html
 
 linux: ./sources/*.cpp
 	rm -rf ./linbuild
