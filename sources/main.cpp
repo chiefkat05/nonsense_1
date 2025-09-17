@@ -26,6 +26,7 @@ const unsigned int window_height = 420;
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 void mouse_callback(GLFWwindow *window, double xpos, double ypos);
+void window_focus_callback(GLFWwindow *window, int focused);
 void processInput(GLFWwindow *window);
 
 double delta_time = 0.0,
@@ -44,6 +45,8 @@ double pitch = 0.0, yaw = -90.0;
 double cameraFloor = 0.0;
 double jump_velocity = 4.0;
 bool onGround = false;
+
+bool cursorHeld = false;
 
 double mouseX, mouseY;
 
@@ -93,6 +96,9 @@ int main()
 #endif
 
     glEnable(GL_DEPTH_TEST);
+    // glEnable(GL_CULL_FACE);
+    // glCullFace(GL_BACK);
+    // glFrontFace(GL_CCW);
     graphics_init();
 
     shader_main.use();
@@ -139,10 +145,8 @@ int main()
     mainGame.setup_level("./levels/spawn.l");
     mainGame.goto_level(0);
 
-    cube c1;
-    c1.Put(0.0, -1.0, 0.0);
-    c1.Scale(4.0, 0.5, 4.0);
-    c1.Image(2);
+    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+    glfwSetWindowFocusCallback(window, window_focus_callback);
 
     loop = [&]
     {
@@ -167,26 +171,9 @@ int main()
         view = glm::lookAt(cameraOffset, cameraPos + cameraFront, up);
         shader_main.setMat4("view", view);
 
-        // c2.Put(0.0, 0.5 + static_cast<float>(std::sin(glfwGetTime())), -4.0);
-
-        // c3.Put(4.0, 1.0, 2.0);
-        // c3.Scale(0.5, 0.5, 0.5);
-        // c3.Rotate(0.0, static_cast<float>(glfwGetTime()), 0.0);
-
-        // c4.Put(7.0 + static_cast<float>(std::sin(glfwGetTime())), 1.5 + static_cast<float>(std::sin(glfwGetTime())), 7.0);
-        // c4.Scale(4.0 + static_cast<float>(std::sin(glfwGetTime()) * 2.0), 4.0 + static_cast<float>(std::sin(glfwGetTime()) * 2.0), 2.0);
-
-        // c1.draw(shader_main);
-        // c2.draw(shader_main);
-        // c3.draw(shader_main, TRANSFORM_ROTATION_FIRST);
-        // c4.draw(shader_main);
-        // floorcube.draw(shader_main);
-
         glfwSwapBuffers((GLFWwindow *)window);
         glfwPollEvents();
     };
-
-    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
 #ifdef __EMSCRIPTEN__
     void *mloop_arg = window;
@@ -215,8 +202,11 @@ void mouse_callback(GLFWwindow *window, double xpos, double ypos)
     xoffset *= sensitivity;
     yoffset *= sensitivity;
 
-    yaw += xoffset;
-    pitch += yoffset;
+    if (cursorHeld)
+    {
+        yaw += xoffset;
+        pitch += yoffset;
+    }
 
     if (pitch > 89.0f)
         pitch = 89.0f;
@@ -243,6 +233,7 @@ void mouse_callback(GLFWwindow *window, double xpos, double ypos)
     {
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
         glfwFocusWindow(window);
+        cursorHeld = true;
     }
 }
 
@@ -282,10 +273,12 @@ void processInput(GLFWwindow *window)
     if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS)
     {
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        cursorHeld = true;
     }
     if (glfwGetKey(window, GLFW_KEY_G) == GLFW_PRESS)
     {
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+        cursorHeld = false;
     }
 
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
@@ -309,4 +302,17 @@ void processInput(GLFWwindow *window)
     // {
     //     cameraPos -= cameraRight * static_cast<float>(CAMERA_SPEED * delta_time);
     // }
+}
+void window_focus_callback(GLFWwindow *window, int focused)
+{
+    if (focused)
+    {
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        cursorHeld = true;
+    }
+    else
+    {
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+        cursorHeld = false;
+    }
 }

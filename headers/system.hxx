@@ -21,7 +21,7 @@ enum object_type
 };
 struct level_object
 {
-    cube visual;
+    model_primitive visual;
     aabb collider;
     object_type type;
 };
@@ -34,7 +34,7 @@ private:
     double gravity = -9.81;
 
 public:
-    void addObject(glm::vec3 pos, glm::vec3 scale, unsigned int texture, object_type type);
+    void addObject(model_primitive_type model_type, glm::vec3 pos, glm::vec3 scale, unsigned int texture, object_type type);
     void placeObject(glm::vec3 pos, unsigned int index);
     void moveObject(glm::vec3 distance, unsigned int index);
 
@@ -52,8 +52,8 @@ enum update_command_types
 enum create_object_types
 {
     COBJ_NONE,
-    COBJ_CUBE,
-    COBJ_CUBE_PIXELPOS
+    COBJ_PRIMITIVE,
+    COBJ_PRIMITIVE_PIXELPOS
 };
 class game
 {

@@ -6,7 +6,12 @@ all: ./sources/*.cpp
 	rm -rf ./*.o
 
 windows: ./sources/*.cpp
-	mkdir -p ./winbuild
+	rm -rf ./winbuild
+	mkdir ./winbuild
+	cp -r ./img/ ./winbuild/
+	cp -r ./snd/ ./winbuild/
+	cp -r ./shaders/ ./winbuild/
+	cp -r ./levels/ ./winbuild/
 	x86_64-w64-mingw32-g++ -c -g ./sources/*.cpp
 	x86_64-w64-mingw32-g++ -c ./glad/src/gl.c
 	x86_64-w64-mingw32-g++ -c ./deps/miniaudio.c
@@ -16,9 +21,17 @@ windows: ./sources/*.cpp
 web:
 	mkdir -p ./webbuild
 	emcc --use-port=emdawnwebgpu -sSTACK_SIZE=128kb --use-port=contrib.glfw3:disableMultiWindow=true ./deps/miniaudio.c ./sources/*.cpp -o ./webbuild/index.html -s WASM=1 -s DISABLE_EXCEPTION_CATCHING=1 -s ENVIRONMENT=web --preload-file shaders --preload-file img --preload-file snd --preload-file levels
+	cp index.html.bak ./webbuild/
+	rm -rf ./webbuild/index.html
+	mv ./webbuild/index.html.bak ./webbuild/index.html
 
 linux: ./sources/*.cpp
-	mkdir -p ./linbuild
+	rm -rf ./linbuild
+	mkdir ./linbuild
+	cp -r ./img/ ./linbuild/
+	cp -r ./snd/ ./linbuild/
+	cp -r ./shaders/ ./linbuild/
+	cp -r ./levels/ ./linbuild/
 	g++ -c -g ./sources/*.cpp
 	g++ -c ./glad/src/gl.c
 	g++ -c ./deps/miniaudio.c

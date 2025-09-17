@@ -27,8 +27,10 @@ void game::setup_level(const char *level_path)
     unsigned int new_texture = 0;
 
     create_object_types making = COBJ_NONE;
+    model_primitive_type model_type = MODEL_NONE;
     int step = 0;
     std::string word, line;
+    double pixel_division = 1.0;
     while (std::getline(level_file, line))
     {
         std::stringstream ss(line);
@@ -36,38 +38,84 @@ void game::setup_level(const char *level_path)
         {
             if (making == COBJ_NONE)
             {
-                if (word == "cube")
+                if (word == "cube" || word == "box")
                 {
-                    making = COBJ_CUBE;
+                    making = COBJ_PRIMITIVE;
+                    pixel_division = 1.0;
+                    model_type = MODEL_CUBE;
                     continue;
                 }
-                if (word == "pcube")
+                if (word == "pcube" || word == "pbox" || word == "pixelcube" || word == "pixelbox")
                 {
-                    making = COBJ_CUBE_PIXELPOS;
+                    making = COBJ_PRIMITIVE_PIXELPOS;
+                    pixel_division = pixel_scale;
+                    model_type = MODEL_CUBE;
+                    continue;
+                }
+                if (word == "quad" || word == "plane")
+                {
+                    making = COBJ_PRIMITIVE;
+                    pixel_division = 1.0;
+                    model_type = MODEL_QUAD;
+                    continue;
+                }
+                if (word == "pquad" || word == "pplane" || word == "pixelquad" || word == "pixelplane")
+                {
+                    making = COBJ_PRIMITIVE;
+                    pixel_division = pixel_scale;
+                    model_type = MODEL_QUAD;
+                    continue;
+                }
+                if (word == "pyramid")
+                {
+                    making = COBJ_PRIMITIVE;
+                    pixel_division = 1.0;
+                    model_type = MODEL_PYRAMID;
+                    continue;
+                }
+                if (word == "ppyramid" || word == "pixelpyramid")
+                {
+                    making = COBJ_PRIMITIVE;
+                    pixel_division = pixel_scale;
+                    model_type = MODEL_PYRAMID;
+                    continue;
+                }
+                if (word == "tri" || word == "triangle")
+                {
+                    making = COBJ_PRIMITIVE;
+                    pixel_division = 1.0;
+                    model_type = MODEL_TRI;
+                    continue;
+                }
+                if (word == "ptri" || word == "ptriangle" || word == "pixeltri" || word == "pixeltriangle")
+                {
+                    making = COBJ_PRIMITIVE;
+                    pixel_division = pixel_scale;
+                    model_type = MODEL_TRI;
                     continue;
                 }
             }
-            if (making == COBJ_CUBE)
+            if (making == COBJ_PRIMITIVE || making == COBJ_PRIMITIVE_PIXELPOS)
             {
                 switch (step)
                 {
                 case 0:
-                    new_position.x = std::stod(word);
+                    new_position.x = std::stod(word) / pixel_division;
                     break;
                 case 1:
-                    new_position.y = std::stod(word);
+                    new_position.y = std::stod(word) / pixel_division;
                     break;
                 case 2:
-                    new_position.z = std::stod(word);
+                    new_position.z = std::stod(word) / pixel_division;
                     break;
                 case 3:
-                    new_scale.x = std::stod(word);
+                    new_scale.x = std::stod(word) / pixel_division;
                     break;
                 case 4:
-                    new_scale.y = std::stod(word);
+                    new_scale.y = std::stod(word) / pixel_division;
                     break;
                 case 5:
-                    new_scale.z = std::stod(word);
+                    new_scale.z = std::stod(word) / pixel_division;
                     break;
                 case 6:
                     new_texture = std::stoi(word);
@@ -75,44 +123,7 @@ void game::setup_level(const char *level_path)
                 case 7:
                     new_type = static_cast<object_type>(std::stoi(word));
 
-                    new_level.addObject(new_position, new_scale, new_texture, new_type);
-                    making = COBJ_NONE;
-                    step = -1;
-                    break;
-                }
-
-                ++step;
-            }
-            if (making == COBJ_CUBE_PIXELPOS)
-            {
-                switch (step)
-                {
-                case 0:
-                    new_position.x = std::stod(word) / pixel_scale;
-                    break;
-                case 1:
-                    new_position.y = std::stod(word) / pixel_scale;
-                    break;
-                case 2:
-                    new_position.z = std::stod(word) / pixel_scale;
-                    break;
-                case 3:
-                    new_scale.x = std::stod(word) / pixel_scale;
-                    break;
-                case 4:
-                    new_scale.y = std::stod(word) / pixel_scale;
-                    break;
-                case 5:
-                    new_scale.z = std::stod(word) / pixel_scale;
-                    break;
-                case 6:
-                    new_texture = std::stoi(word);
-                    break;
-                case 7:
-                    new_type = static_cast<object_type>(std::stoi(word));
-
-                    // make object and add to level here
-                    new_level.addObject(new_position, new_scale, new_texture, new_type);
+                    new_level.addObject(model_type, new_position, new_scale, new_texture, new_type);
                     making = COBJ_NONE;
                     step = -1;
                     break;
@@ -138,9 +149,9 @@ void game::update(shader &shad, double delta_time, glm::vec3 &plPos, glm::vec3 &
     levels[level_id].drawLevel(shad);
 }
 
-void level::addObject(glm::vec3 pos, glm::vec3 scale, unsigned int texture, object_type type)
+void level::addObject(model_primitive_type model_type, glm::vec3 pos, glm::vec3 scale, unsigned int texture, object_type type)
 {
-    cube c;
+    model_primitive c(model_type);
     c.Put(pos);
     c.Scale(scale);
     c.Image(texture);
