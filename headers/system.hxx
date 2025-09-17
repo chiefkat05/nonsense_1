@@ -40,8 +40,8 @@ public:
 
     void scaleObject(glm::vec3 scale, unsigned int index);
 
-    void drawLevel(shader &shad);
-    void updatePhysics(double delta_time, glm::vec3 &player_position, glm::vec3 &player_velocity, aabb &player_collider, bool &on_floor);
+    void drawLevel(shader &shad, double alpha);
+    void updatePhysics(double tick_time, glm::vec3 &player_position, glm::vec3 &player_velocity, aabb &player_collider, bool &on_floor);
 };
 
 enum update_command_types
@@ -66,7 +66,8 @@ public:
     void goto_level(unsigned int id);
     void setup_level(const char *level_path);
 
-    void update(shader &shad, double delta_time, glm::vec3 &plPos, glm::vec3 &plVel, aabb &plCol, bool &onG);
+    void update(double tick_time, glm::vec3 &plPos, glm::vec3 &plVel, aabb &plCol, bool &onG);
+    void draw(shader &shad, double alpha);
 };
 
 #endif

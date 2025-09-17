@@ -226,8 +226,11 @@ void model_primitive::Image(unsigned int index)
     textureIndex = index;
 }
 
-void model_primitive::draw(shader &_shader, transform_order_type transformOrder)
+void model_primitive::draw(shader &_shader, double alpha, transform_order_type transformOrder)
 {
+    // glm::vec3 interPosition = (position * static_cast<float>(alpha)) + (last_position * static_cast<float>(1.0 - alpha)); // consider where the player interpolation needs to happen
+    glm::vec3 interPosition = position; // also this will only be implemented for moving objects
+
     _shader.use();
 
     _shader.setInt("texture1", textureIndex);
@@ -239,12 +242,12 @@ void model_primitive::draw(shader &_shader, transform_order_type transformOrder)
         model = glm::rotate(model, rotation.x, glm::vec3(1.0, 0.0, 0.0));
         model = glm::rotate(model, rotation.y, glm::vec3(0.0, 1.0, 0.0));
         model = glm::rotate(model, rotation.z, glm::vec3(0.0, 0.0, 1.0));
-        model = glm::translate(model, position);
+        model = glm::translate(model, interPosition);
         model = glm::scale(model, scale);
         break;
     case TRANSFORM_SCALE_FIRST:
         model = glm::scale(model, scale);
-        model = glm::translate(model, position);
+        model = glm::translate(model, interPosition);
         model = glm::rotate(model, rotation.x, glm::vec3(1.0, 0.0, 0.0));
         model = glm::rotate(model, rotation.y, glm::vec3(0.0, 1.0, 0.0));
         model = glm::rotate(model, rotation.z, glm::vec3(0.0, 0.0, 1.0));
@@ -254,24 +257,24 @@ void model_primitive::draw(shader &_shader, transform_order_type transformOrder)
         model = glm::rotate(model, rotation.y, glm::vec3(0.0, 1.0, 0.0));
         model = glm::rotate(model, rotation.z, glm::vec3(0.0, 0.0, 1.0));
         model = glm::scale(model, scale);
-        model = glm::translate(model, position);
+        model = glm::translate(model, interPosition);
         break;
     case TRANSFORM_SCALE_AND_ROTATION_FIRST:
         model = glm::scale(model, scale);
         model = glm::rotate(model, rotation.x, glm::vec3(1.0, 0.0, 0.0));
         model = glm::rotate(model, rotation.y, glm::vec3(0.0, 1.0, 0.0));
         model = glm::rotate(model, rotation.z, glm::vec3(0.0, 0.0, 1.0));
-        model = glm::translate(model, position);
+        model = glm::translate(model, interPosition);
         break;
     case TRANSFORM_SCALE_BEFORE_ROTATION:
-        model = glm::translate(model, position);
+        model = glm::translate(model, interPosition);
         model = glm::scale(model, scale);
         model = glm::rotate(model, rotation.x, glm::vec3(1.0, 0.0, 0.0));
         model = glm::rotate(model, rotation.y, glm::vec3(0.0, 1.0, 0.0));
         model = glm::rotate(model, rotation.z, glm::vec3(0.0, 0.0, 1.0));
         break;
     default:
-        model = glm::translate(model, position);
+        model = glm::translate(model, interPosition);
         model = glm::rotate(model, rotation.x, glm::vec3(1.0, 0.0, 0.0));
         model = glm::rotate(model, rotation.y, glm::vec3(0.0, 1.0, 0.0));
         model = glm::rotate(model, rotation.z, glm::vec3(0.0, 0.0, 1.0));

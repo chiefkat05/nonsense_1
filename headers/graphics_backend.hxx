@@ -70,7 +70,9 @@ private:
     unsigned int textureIndex = 0;
     unsigned int *textureID = nullptr;
 
-    glm::vec3 position = glm::vec3(0.0), scale = glm::vec3(1.0), rotation = glm::vec3(0.0);
+    glm::vec3 position = glm::vec3(0.0), scale = glm::vec3(1.0);
+    glm::vec3 last_position = glm::vec3(0.0), last_scale = glm::vec3(1.0);
+    glm::vec3 rotation = glm::vec3(0.0);
 
 public:
     glm::vec3 getPos()
@@ -91,7 +93,7 @@ public:
 
     void Image(unsigned int index);
 
-    void draw(shader &_shader, transform_order_type transformOrder = TRANSFORM_DEFAULT);
+    void draw(shader &_shader, double alpha, transform_order_type transformOrder = TRANSFORM_DEFAULT);
 
     model_primitive(model_primitive_type type);
     model_primitive();

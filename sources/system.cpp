@@ -137,16 +137,18 @@ void game::setup_level(const char *level_path)
     ++level_count;
 }
 
-void game::update(shader &shad, double delta_time, glm::vec3 &plPos, glm::vec3 &plVel, aabb &plCol, bool &onG)
+void game::update(double tick_time, glm::vec3 &plPos, glm::vec3 &plVel, aabb &plCol, bool &onG)
 {
     if (level_count <= level_id)
     {
         std::cout << "level at index " << level_id << " does not exist.\n";
         return;
     }
-    levels[level_id].updatePhysics(delta_time, plPos, plVel, plCol, onG);
-
-    levels[level_id].drawLevel(shad);
+    levels[level_id].updatePhysics(tick_time, plPos, plVel, plCol, onG);
+}
+void game::draw(shader &shad, double alpha)
+{
+    levels[level_id].drawLevel(shad, alpha);
 }
 
 void level::addObject(model_primitive_type model_type, glm::vec3 pos, glm::vec3 scale, unsigned int texture, object_type type)
@@ -194,15 +196,16 @@ void level::scaleObject(glm::vec3 scale, unsigned int index)
     objects[index].collider.scale = scale; // lol
 }
 
-void level::drawLevel(shader &shad) // please add multi-shader support
+void level::drawLevel(shader &shad, double alpha) // please add multi-shader support
 {
+    // calc inter positions here
     for (int i = 0; i < object_count; ++i)
     {
-        objects[i].visual.draw(shad);
+        objects[i].visual.draw(shad, alpha);
     }
 }
 // add tick system?
-void level::updatePhysics(double delta_time, glm::vec3 &player_position, glm::vec3 &player_velocity, aabb &player_collider, bool &on_floor)
+void level::updatePhysics(double tick_time, glm::vec3 &player_position, glm::vec3 &player_velocity, aabb &player_collider, bool &on_floor)
 {
     if (object_count == 0)
     {
@@ -224,7 +227,7 @@ void level::updatePhysics(double delta_time, glm::vec3 &player_position, glm::ve
 
         objects[i].collider.pos = objects[i].visual.getPos(); // inefficient...
         objects[i].collider.scale = objects[i].visual.getScale();
-        collision col = normal_collision(&player_collider, &objects[i].collider, player_velocity * static_cast<float>(delta_time), glm::vec3(0.0));
+        collision col = normal_collision(&player_collider, &objects[i].collider, player_velocity * static_cast<float>(tick_time), glm::vec3(0.0));
         if (col.hit)
         {
             player_position = col.hitLocation;
@@ -251,11 +254,11 @@ void level::updatePhysics(double delta_time, glm::vec3 &player_position, glm::ve
         }
     }
     if (!on_floor)
-        player_velocity.y += gravity * delta_time;
+        player_velocity.y += gravity * tick_time;
 
-    player_position.y += player_velocity.y * delta_time;
-    player_position.x += player_velocity.x * delta_time;
-    player_position.z += player_velocity.z * delta_time;
+    player_position.y += player_velocity.y * tick_time;
+    player_position.x += player_velocity.x * tick_time;
+    player_position.z += player_velocity.z * tick_time;
     player_velocity.x = 0.0;
     player_velocity.z = 0.0;
 }

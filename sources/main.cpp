@@ -23,6 +23,7 @@
 
 const unsigned int window_width = 640;
 const unsigned int window_height = 420;
+const double tick_time = 1.0;
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 void mouse_callback(GLFWwindow *window, double xpos, double ypos);
@@ -39,7 +40,7 @@ glm::vec3 up = glm::vec3(0.0, 1.0, 0.0);
 glm::vec3 cameraRight = glm::vec3(0.0);
 glm::vec3 cameraDirection = glm::vec3(0.0);
 glm::vec3 cameraVelocity = glm::vec3(0.0);
-const double CAMERA_SPEED = 400.0;
+const double CAMERA_SPEED = 4.0;
 
 double pitch = 0.0, yaw = -90.0;
 double cameraFloor = 0.0;
@@ -148,6 +149,8 @@ int main()
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glfwSetWindowFocusCallback(window, window_focus_callback);
 
+    double frame_accumulation = 0.0;
+    glm::vec3 prevCameraPos = cameraPos;
     loop = [&]
     {
         if (ma_sound_at_end(&music))
@@ -155,21 +158,32 @@ int main()
             ma_sound_seek_to_pcm_frame(&music, 0);
         }
 
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glClearColor(0.4, 0.6, 0.9, 1.0);
+
+        frame_accumulation += delta_time; // 0.0 on first frame. Should be on the other side of delta calculation?
+
         lastTime = currentTime;
         currentTime = glfwGetTime();
         delta_time = currentTime - lastTime;
 
-        processInput(window);
+        while (frame_accumulation >= tick_time)
+        {
+            prevCameraPos = cameraPos;
 
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        glClearColor(0.4, 0.6, 0.9, 1.0);
+            processInput(window);
+            mainGame.update(tick_time, cameraPos, cameraVelocity, plcol, onGround); // player movement happens here (no moving objects yet)
+            frame_accumulation -= tick_time;
+        }
+        double alpha_time = frame_accumulation / tick_time;
 
-        mainGame.update(shader_main, delta_time, cameraPos, cameraVelocity, plcol, onGround);
-        // std::cout << cameraPos.z << " vs " << c1col.pos.z << " and " << plcol.pos.z << " huh\n";
-
-        cameraOffset = cameraPos + glm::vec3(0.0, 0.5, 0.0);
-        view = glm::lookAt(cameraOffset, cameraPos + cameraFront, up);
+        glm::vec3 interpolatedCameraPos = (cameraPos * static_cast<float>(alpha_time)) + (prevCameraPos * static_cast<float>(1.0 - alpha_time));
+        cameraOffset = interpolatedCameraPos + glm::vec3(0.0, 0.5, 0.0);
+        view = glm::lookAt(cameraOffset, cameraOffset + cameraFront, up);
         shader_main.setMat4("view", view);
+
+        // inter-update here
+        mainGame.draw(shader_main, alpha_time);
 
         glfwSwapBuffers((GLFWwindow *)window);
         glfwPollEvents();
@@ -237,37 +251,44 @@ void mouse_callback(GLFWwindow *window, double xpos, double ypos)
     }
 }
 
-double stepTimer = 5.0;
+// double stepTimer = 5.0;
 void processInput(GLFWwindow *window)
 {
-    if (stepTimer < 0.0 && onGround)
-    {
-        stepTimer = 5.0;
-        ma_sound_start(&stepsfx);
-    }
+    // hold y
+    // set velocity to zero
+    // get keys and add all velocity
+    // set y back to original
+    // calculate jump now
+    // done. profit??
+
+    // if (stepTimer < 0.0 && onGround)
+    // {
+    //     stepTimer = 5.0;
+    //     ma_sound_start(&stepsfx);
+    // }
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
     {
-        cameraVelocity += cameraXZFront * static_cast<float>(CAMERA_SPEED * delta_time);
-        stepTimer -= 15.0 * delta_time;
+        cameraVelocity = cameraXZFront * static_cast<float>(CAMERA_SPEED);
+        // stepTimer -= 15.0 * delta_time;
     }
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
     {
-        cameraVelocity -= cameraXZFront * static_cast<float>(CAMERA_SPEED * delta_time);
-        stepTimer -= 15.0 * delta_time;
+        cameraVelocity = -cameraXZFront * static_cast<float>(CAMERA_SPEED);
+        // stepTimer -= 15.0 * delta_time;
     }
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-    {
-        cameraVelocity -= cameraRight * static_cast<float>(CAMERA_SPEED * delta_time);
-        stepTimer -= 15.0 * delta_time;
-    }
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-    {
-        cameraVelocity += cameraRight * static_cast<float>(CAMERA_SPEED * delta_time);
-        stepTimer -= 15.0 * delta_time;
-    }
+    // if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+    // {
+    //     cameraVelocity += -cameraRight * static_cast<float>(CAMERA_SPEED) * static_cast<float>(tick_time);
+    //     // stepTimer -= 15.0 * delta_time;
+    // }
+    // if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+    // {
+    //     cameraVelocity += cameraRight * static_cast<float>(CAMERA_SPEED) * static_cast<float>(tick_time);
+    //     // stepTimer -= 15.0 * delta_time;
+    // }
     if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && onGround)
     {
-        cameraVelocity.y = jump_velocity;
+        cameraVelocity = up * static_cast<float>(jump_velocity);
     }
 
     if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS)
@@ -286,23 +307,6 @@ void processInput(GLFWwindow *window)
         glfwSetWindowShouldClose(window, true);
         cursorHeld = false;
     }
-
-    // if (mouseY > (window_height - (window_height * 0.25)) && glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_1) == GLFW_PRESS)
-    // {
-    //     cameraPos -= cameraXZFront * static_cast<float>(CAMERA_SPEED * delta_time);
-    // }
-    // if (mouseY < (window_height * 0.25) && glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_1) == GLFW_PRESS)
-    // {
-    //     cameraPos += cameraXZFront * static_cast<float>(CAMERA_SPEED * delta_time);
-    // }
-    // if (mouseX > (window_width - (window_width * 0.25)) && glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_1) == GLFW_PRESS)
-    // {
-    //     cameraPos += cameraRight * static_cast<float>(CAMERA_SPEED * delta_time);
-    // }
-    // if (mouseX < (window_width * 0.25) && glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_1) == GLFW_PRESS)
-    // {
-    //     cameraPos -= cameraRight * static_cast<float>(CAMERA_SPEED * delta_time);
-    // }
 }
 void window_focus_callback(GLFWwindow *window, int focused)
 {
