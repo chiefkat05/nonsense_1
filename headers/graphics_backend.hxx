@@ -19,6 +19,7 @@
 #include "/usr/include/glm/glm.hpp"
 #include "/usr/include/glm/gtc/matrix_transform.hpp"
 #include "/usr/include/glm/gtc/type_ptr.hpp"
+#include "/usr/include/glm/gtc/quaternion.hpp"
 
 void graphics_init();
 
@@ -69,12 +70,16 @@ private:
     unsigned int VBO, VAO;
     unsigned int textureIndex = 0;
     unsigned int *textureID = nullptr;
+    model_primitive_type mtype = MODEL_NONE;
+    unsigned int vertex_count = 0;
 
-    glm::vec3 position = glm::vec3(0.0), scale = glm::vec3(1.0);
-    glm::vec3 last_position = glm::vec3(0.0), last_scale = glm::vec3(1.0);
-    glm::vec3 rotation = glm::vec3(0.0);
+    glm::vec3 position = glm::vec3(0.0), scale = glm::vec3(1.0), rotation = glm::vec3(0.0);
+    // glm::vec3 last_position = glm::vec3(0.0), last_scale = glm::vec3(1.0);
+    // glm::quat rotation = glm::quat(glm::vec3(0.0));
+    // glm::quat last_rotation = glm::quat(glm::vec3(0.0));
 
 public:
+    glm::vec3 rotation_direction = glm::vec3(0.0);
     glm::vec3 getPos()
     {
         return position;
@@ -83,6 +88,22 @@ public:
     {
         return scale;
     }
+    inline glm::quat getRotation()
+    {
+        return rotation;
+    }
+    // inline glm::quat getLastRotation()
+    // {
+    //     return last_rotation;
+    // }
+    // inline void setLastRotation(glm::quat rot)
+    // {
+    //     last_rotation = rot;
+    // }
+    // inline void setRotation(glm::quat rot)
+    // {
+    //     rotation = rot;
+    // }
 
     void Put(glm::vec3 pos);
     void Put(double x = 0.0, double y = 0.0, double z = 0.0);

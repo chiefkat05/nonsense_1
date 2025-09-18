@@ -225,7 +225,7 @@ void level::updatePhysics(double tick_time, glm::vec3 &player_position, glm::vec
         if (objects[i].type == OBJ_PASSTHROUGH)
             continue;
 
-        objects[i].collider.pos = objects[i].visual.getPos(); // inefficient...
+        putAABB(&objects[i].collider, objects[i].visual.getPos());
         objects[i].collider.scale = objects[i].visual.getScale();
         collision col = normal_collision(&player_collider, &objects[i].collider, player_velocity * static_cast<float>(tick_time), glm::vec3(0.0));
         if (col.hit)
@@ -253,12 +253,16 @@ void level::updatePhysics(double tick_time, glm::vec3 &player_position, glm::vec
             }
         }
     }
+
     if (!on_floor)
-        player_velocity.y += gravity * tick_time;
+        player_velocity.y += 0.5 * gravity * tick_time;
 
     player_position.y += player_velocity.y * tick_time;
     player_position.x += player_velocity.x * tick_time;
     player_position.z += player_velocity.z * tick_time;
+
     player_velocity.x = 0.0;
     player_velocity.z = 0.0;
+    if (!on_floor)
+        player_velocity.y += 0.5 * gravity * tick_time;
 }

@@ -23,7 +23,7 @@
 
 const unsigned int window_width = 640;
 const unsigned int window_height = 420;
-const double tick_time = 1.0;
+const double tick_time = 0.01;
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 void mouse_callback(GLFWwindow *window, double xpos, double ypos);
@@ -48,8 +48,6 @@ double jump_velocity = 4.0;
 bool onGround = false;
 
 bool cursorHeld = false;
-
-double mouseX, mouseY;
 
 GLFWwindow *window;
 
@@ -151,6 +149,10 @@ int main()
 
     double frame_accumulation = 0.0;
     glm::vec3 prevCameraPos = cameraPos;
+
+    model_primitive cube(MODEL_CUBE);
+    model_primitive why(MODEL_QUAD);
+    why.Put(0.5f, 0.5f, 0.5f);
     loop = [&]
     {
         if (ma_sound_at_end(&music))
@@ -161,17 +163,21 @@ int main()
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glClearColor(0.4, 0.6, 0.9, 1.0);
 
-        frame_accumulation += delta_time; // 0.0 on first frame. Should be on the other side of delta calculation?
+        frame_accumulation += delta_time;
 
         lastTime = currentTime;
         currentTime = glfwGetTime();
         delta_time = currentTime - lastTime;
+
+        // cube.setLastRotation(cube.getRotation());
 
         while (frame_accumulation >= tick_time)
         {
             prevCameraPos = cameraPos;
 
             processInput(window);
+
+            // cube.rotation_direction = glm::vec3(0.0, )
             mainGame.update(tick_time, cameraPos, cameraVelocity, plcol, onGround); // player movement happens here (no moving objects yet)
             frame_accumulation -= tick_time;
         }
@@ -179,11 +185,15 @@ int main()
 
         glm::vec3 interpolatedCameraPos = (cameraPos * static_cast<float>(alpha_time)) + (prevCameraPos * static_cast<float>(1.0 - alpha_time));
         cameraOffset = interpolatedCameraPos + glm::vec3(0.0, 0.5, 0.0);
+
+        // cameraDirection = glm::slerp(cameraDirection, glm::quat(glm::vec3(newDir)), alpha_time);
+        // cameraFront = cameraDirection;
         view = glm::lookAt(cameraOffset, cameraOffset + cameraFront, up);
         shader_main.setMat4("view", view);
 
         // inter-update here
         mainGame.draw(shader_main, alpha_time);
+        why.draw(shader_main, alpha_time);
 
         glfwSwapBuffers((GLFWwindow *)window);
         glfwPollEvents();
@@ -238,9 +248,6 @@ void mouse_callback(GLFWwindow *window, double xpos, double ypos)
     cameraDirection.z = std::sin(glm::radians(yaw));
     cameraXZFront = glm::normalize(cameraDirection);
 
-    mouseX = xpos;
-    mouseY = ypos;
-
     glfwSetCursorPos(window, 0, 0);
 
     if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_1) == GLFW_PRESS)
@@ -254,42 +261,38 @@ void mouse_callback(GLFWwindow *window, double xpos, double ypos)
 // double stepTimer = 5.0;
 void processInput(GLFWwindow *window)
 {
-    // hold y
-    // set velocity to zero
-    // get keys and add all velocity
-    // set y back to original
-    // calculate jump now
-    // done. profit??
-
     // if (stepTimer < 0.0 && onGround)
     // {
     //     stepTimer = 5.0;
     //     ma_sound_start(&stepsfx);
     // }
+    glm::vec3 moveDir = glm::vec3(0.0);
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
     {
-        cameraVelocity = cameraXZFront * static_cast<float>(CAMERA_SPEED);
+        moveDir += cameraXZFront * static_cast<float>(CAMERA_SPEED);
         // stepTimer -= 15.0 * delta_time;
     }
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
     {
-        cameraVelocity = -cameraXZFront * static_cast<float>(CAMERA_SPEED);
+        moveDir += -cameraXZFront * static_cast<float>(CAMERA_SPEED);
         // stepTimer -= 15.0 * delta_time;
     }
-    // if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-    // {
-    //     cameraVelocity += -cameraRight * static_cast<float>(CAMERA_SPEED) * static_cast<float>(tick_time);
-    //     // stepTimer -= 15.0 * delta_time;
-    // }
-    // if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-    // {
-    //     cameraVelocity += cameraRight * static_cast<float>(CAMERA_SPEED) * static_cast<float>(tick_time);
-    //     // stepTimer -= 15.0 * delta_time;
-    // }
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+    {
+        moveDir += -cameraRight * static_cast<float>(CAMERA_SPEED);
+        // stepTimer -= 15.0 * delta_time;
+    }
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+    {
+        moveDir += cameraRight * static_cast<float>(CAMERA_SPEED);
+        // stepTimer -= 15.0 * delta_time;
+    }
+
     if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && onGround)
     {
-        cameraVelocity = up * static_cast<float>(jump_velocity);
+        cameraVelocity.y = jump_velocity;
     }
+    cameraVelocity = glm::vec3(moveDir.x, cameraVelocity.y, moveDir.z);
 
     if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS)
     {

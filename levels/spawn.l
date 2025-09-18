@@ -6,6 +6,15 @@
 //pcube and set the scale to '12 8 2' or something similar as you can see below.
 
 
+//quad test
+quad -2.0 1.0 0.0 1.0 1.0 1.0 0 1
+
+//pyramid test
+pyramid 2.0 1.0 0.0 1.0 1.0 1.0 0 1
+
+//tri test
+tri 4.0 1.0 0.0 1.0 1.0 1.0 0 1
+
 //floor
 cube 0.0 -1.0 0.0 40.0 1.0 40.0 2 0
 //outside floor
@@ -35,12 +44,3 @@ cube -4.0 -0.25 6.0 2.0 0.5 2.0 0 0
 pcube 128 0 0 16 16 32 2 0
 pcube 112 -4 0 16 8 32 2 0
 pcube 144 -4 0 16 8 32 2 0
-
-//quad test
-quad -2.0 1.0 0.0 1.0 1.0 1.0 0 1
-
-//pyramid test
-pyramid 2.0 1.0 0.0 1.0 1.0 1.0 0 1
-
-//tri test
-tri 4.0 1.0 0.0 1.0 1.0 1.0 0 1

@@ -283,17 +283,22 @@ void model_primitive::draw(shader &_shader, double alpha, transform_order_type t
     }
     // _shader.setDouble("texture_scale", std::max(std::max(scale.x, scale.y), scale.z));
     // to do pixel size you need texture x and y
+
+    // std::cout << mtype << " test\n";
+    // if (mtype == MODEL_QUAD)
+    // {
+    //     std::cout << sizeof(quad_vertices) / sizeof(quad_vertices[0]) << " test 2 wuad" << std::endl;
+    // }
     _shader.setVec3("texture_scale", scale * pixel_scale);
     _shader.setVec2("texture_pixel_scale", glm::vec2(1.0) / glm::vec2(allTextures.getTextureAtIndex(textureIndex)->getSize()));
     _shader.setMat4("model", model);
 
     glBindVertexArray(VAO);
-    glDrawArrays(GL_TRIANGLES, 0, 36);
+    glDrawArrays(GL_TRIANGLES, 0, vertex_count); // what is the 36??
 }
 
 model_primitive::model_primitive(model_primitive_type type)
 {
-    std::cout << type << " huh\n";
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
 
@@ -307,19 +312,24 @@ model_primitive::model_primitive(model_primitive_type type)
         break;
     case MODEL_QUAD:
         glBufferData(GL_ARRAY_BUFFER, sizeof(quad_vertices), quad_vertices, GL_STATIC_DRAW);
+        vertex_count = 6;
         break;
     case MODEL_CUBE:
         glBufferData(GL_ARRAY_BUFFER, sizeof(cube_vertices), cube_vertices, GL_STATIC_DRAW);
+        vertex_count = 36;
         break;
     case MODEL_PYRAMID:
         glBufferData(GL_ARRAY_BUFFER, sizeof(pyramid_vertices), pyramid_vertices, GL_STATIC_DRAW);
+        vertex_count = 18;
         break;
     case MODEL_TRI:
         glBufferData(GL_ARRAY_BUFFER, sizeof(tri_vertices), tri_vertices, GL_STATIC_DRAW);
+        vertex_count = 3;
         break;
     default:
         std::cout << "Oh... sorry, that hasn't been implemented yet. Please try a different shape!\n";
     }
+    mtype = type;
 
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *)0);
     glEnableVertexAttribArray(0);
