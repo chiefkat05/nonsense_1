@@ -198,27 +198,33 @@ void shader::setInt(const char *name, int v)
 
 void model_primitive::Put(glm::vec3 pos)
 {
+    last_position = position;
     position = pos;
 }
 void model_primitive::Put(double x, double y, double z)
 {
+    last_position = position;
     position = glm::vec3(x, y, z);
 }
 void model_primitive::Scale(glm::vec3 scl)
 {
+    last_scale = scale;
     scale = scl;
 }
 void model_primitive::Scale(double x, double y, double z)
 {
+    last_scale = scale;
     scale = glm::vec3(x, y, z);
 }
 void model_primitive::Rotate(glm::vec3 rot)
 {
-    rotation = rot;
+    last_rotation = rotation;
+    rotation = glm::quat(rot);
 }
 void model_primitive::Rotate(double x, double y, double z)
 {
-    rotation = glm::vec3(x, y, z);
+    last_rotation = rotation;
+    rotation = glm::quat(glm::vec3(x, y, z));
 }
 
 void model_primitive::Image(unsigned int index)
@@ -226,78 +232,69 @@ void model_primitive::Image(unsigned int index)
     textureIndex = index;
 }
 
-void model_primitive::draw(shader &_shader, double alpha, transform_order_type transformOrder)
+void model_primitive::draw(shader &_shader, double alpha)
 {
-    // glm::vec3 interPosition = (position * static_cast<float>(alpha)) + (last_position * static_cast<float>(1.0 - alpha)); // consider where the player interpolation needs to happen
-    glm::vec3 interPosition = position; // also this will only be implemented for moving objects
+    if (!dynamic_model)
+    {
+        static_draw(_shader);
+        return;
+    }
+    glm::vec3 interPosition = (position * static_cast<float>(alpha)) + (last_position * static_cast<float>(1.0 - alpha)); // consider where the player interpolation needs to happen
+    glm::vec3 interScale = (scale * static_cast<float>(alpha)) + (last_scale * static_cast<float>(1.0 - alpha));
 
     _shader.use();
 
     _shader.setInt("texture1", textureIndex);
 
     glm::mat4 model = glm::mat4(1.0f);
-    switch (transformOrder)
-    {
-    case TRANSFORM_ROTATION_FIRST:
-        model = glm::rotate(model, rotation.x, glm::vec3(1.0, 0.0, 0.0));
-        model = glm::rotate(model, rotation.y, glm::vec3(0.0, 1.0, 0.0));
-        model = glm::rotate(model, rotation.z, glm::vec3(0.0, 0.0, 1.0));
-        model = glm::translate(model, interPosition);
-        model = glm::scale(model, scale);
-        break;
-    case TRANSFORM_SCALE_FIRST:
-        model = glm::scale(model, scale);
-        model = glm::translate(model, interPosition);
-        model = glm::rotate(model, rotation.x, glm::vec3(1.0, 0.0, 0.0));
-        model = glm::rotate(model, rotation.y, glm::vec3(0.0, 1.0, 0.0));
-        model = glm::rotate(model, rotation.z, glm::vec3(0.0, 0.0, 1.0));
-        break;
-    case TRANSFORM_ROTATION_AND_SCALE_FIRST:
-        model = glm::rotate(model, rotation.x, glm::vec3(1.0, 0.0, 0.0));
-        model = glm::rotate(model, rotation.y, glm::vec3(0.0, 1.0, 0.0));
-        model = glm::rotate(model, rotation.z, glm::vec3(0.0, 0.0, 1.0));
-        model = glm::scale(model, scale);
-        model = glm::translate(model, interPosition);
-        break;
-    case TRANSFORM_SCALE_AND_ROTATION_FIRST:
-        model = glm::scale(model, scale);
-        model = glm::rotate(model, rotation.x, glm::vec3(1.0, 0.0, 0.0));
-        model = glm::rotate(model, rotation.y, glm::vec3(0.0, 1.0, 0.0));
-        model = glm::rotate(model, rotation.z, glm::vec3(0.0, 0.0, 1.0));
-        model = glm::translate(model, interPosition);
-        break;
-    case TRANSFORM_SCALE_BEFORE_ROTATION:
-        model = glm::translate(model, interPosition);
-        model = glm::scale(model, scale);
-        model = glm::rotate(model, rotation.x, glm::vec3(1.0, 0.0, 0.0));
-        model = glm::rotate(model, rotation.y, glm::vec3(0.0, 1.0, 0.0));
-        model = glm::rotate(model, rotation.z, glm::vec3(0.0, 0.0, 1.0));
-        break;
-    default:
-        model = glm::translate(model, interPosition);
-        model = glm::rotate(model, rotation.x, glm::vec3(1.0, 0.0, 0.0));
-        model = glm::rotate(model, rotation.y, glm::vec3(0.0, 1.0, 0.0));
-        model = glm::rotate(model, rotation.z, glm::vec3(0.0, 0.0, 1.0));
-        model = glm::scale(model, scale);
-        break;
-    }
-    // _shader.setDouble("texture_scale", std::max(std::max(scale.x, scale.y), scale.z));
-    // to do pixel size you need texture x and y
 
-    // std::cout << mtype << " test\n";
-    // if (mtype == MODEL_QUAD)
-    // {
-    //     std::cout << sizeof(quad_vertices) / sizeof(quad_vertices[0]) << " test 2 wuad" << std::endl;
-    // }
+    glm::mat4 translation_model = glm::translate(model, interPosition);
+
+    glm::quat inRot = glm::slerp(last_rotation, rotation, static_cast<float>(alpha));
+    glm::mat4 rotation_model = glm::mat4_cast(inRot);
+
+    glm::mat4 scale_model = glm::scale(model, interScale);
+
+    model = translation_model * rotation_model * scale_model;
+
+    last_position = position;
+    last_scale = scale;
+    last_rotation = rotation;
+
+    _shader.setVec3("texture_scale", interScale * pixel_scale);
+    _shader.setVec2("texture_pixel_scale", glm::vec2(1.0) / glm::vec2(allTextures.getTextureAtIndex(textureIndex)->getSize()));
+    _shader.setMat4("model", model);
+
+    glBindVertexArray(VAO);
+    glDrawArrays(GL_TRIANGLES, 0, vertex_count);
+}
+void model_primitive::static_draw(shader &_shader)
+{
+    _shader.use();
+
+    _shader.setInt("texture1", textureIndex);
+
+    if (!static_model_set)
+    {
+        model = glm::mat4(1.0);
+        glm::mat4 translate_model = glm::translate(model, position);
+
+        glm::mat4 rotation_model = glm::mat4_cast(rotation);
+
+        glm::mat4 scale_model = glm::scale(model, scale);
+
+        model = translate_model * rotation_model * scale_model;
+        static_model_set = true;
+    }
     _shader.setVec3("texture_scale", scale * pixel_scale);
     _shader.setVec2("texture_pixel_scale", glm::vec2(1.0) / glm::vec2(allTextures.getTextureAtIndex(textureIndex)->getSize()));
     _shader.setMat4("model", model);
 
     glBindVertexArray(VAO);
-    glDrawArrays(GL_TRIANGLES, 0, vertex_count); // what is the 36??
+    glDrawArrays(GL_TRIANGLES, 0, vertex_count);
 }
 
-model_primitive::model_primitive(model_primitive_type type)
+model_primitive::model_primitive(model_primitive_type type, bool dyn)
 {
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
@@ -339,6 +336,8 @@ model_primitive::model_primitive(model_primitive_type type)
 
     glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *)(5 * sizeof(float)));
     glEnableVertexAttribArray(2);
+
+    dynamic_model = dyn;
 }
 
 void texture::Set(unsigned int index, const char *path)

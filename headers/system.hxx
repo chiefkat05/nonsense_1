@@ -47,13 +47,17 @@ public:
 enum update_command_types
 {
     LVLUPD_MOVEOBJ,
-    LVLUPD_SCALEOBJ
+    LVLUPD_SCALEOBJ,
+    LVLUPD_ROTATEOBJ
 };
-enum create_object_types
+enum level_command_types
 {
-    COBJ_NONE,
-    COBJ_PRIMITIVE,
-    COBJ_PRIMITIVE_PIXELPOS
+    LCOMM_NONE,
+    LCOMM_PRIMITIVE,
+    LCOMM_PRIMITIVE_PIXELPOS,
+    LCOMM_MOVE,
+    LCOMM_SCALE,
+    LCOMM_ROTATE
 };
 class game
 {

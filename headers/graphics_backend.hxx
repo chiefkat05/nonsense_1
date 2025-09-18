@@ -20,6 +20,9 @@
 #include "/usr/include/glm/gtc/matrix_transform.hpp"
 #include "/usr/include/glm/gtc/type_ptr.hpp"
 #include "/usr/include/glm/gtc/quaternion.hpp"
+#define GLM_ENABLE_EXPERIMENTAL
+#include "/usr/include/glm/gtx/quaternion.hpp"
+#include "/usr/include/glm/gtx/euler_angles.hpp"
 
 void graphics_init();
 
@@ -39,16 +42,6 @@ public:
     void setVec2(const char *name, glm::vec2 v);
     void setDouble(const char *name, double v);
     void setInt(const char *name, int v);
-};
-
-enum transform_order_type
-{
-    TRANSFORM_DEFAULT,
-    TRANSFORM_ROTATION_FIRST,
-    TRANSFORM_SCALE_FIRST,
-    TRANSFORM_ROTATION_AND_SCALE_FIRST,
-    TRANSFORM_SCALE_AND_ROTATION_FIRST,
-    TRANSFORM_SCALE_BEFORE_ROTATION
 };
 
 // Okay you're not actually going to implement all this are you
@@ -72,11 +65,13 @@ private:
     unsigned int *textureID = nullptr;
     model_primitive_type mtype = MODEL_NONE;
     unsigned int vertex_count = 0;
+    bool dynamic_model = false, static_model_set = false;
+    glm::mat4 model = glm::mat4(1.0);
 
-    glm::vec3 position = glm::vec3(0.0), scale = glm::vec3(1.0), rotation = glm::vec3(0.0);
-    // glm::vec3 last_position = glm::vec3(0.0), last_scale = glm::vec3(1.0);
-    // glm::quat rotation = glm::quat(glm::vec3(0.0));
-    // glm::quat last_rotation = glm::quat(glm::vec3(0.0));
+    glm::vec3 position = glm::vec3(0.0), scale = glm::vec3(1.0);
+    glm::vec3 last_position = glm::vec3(0.0), last_scale = glm::vec3(1.0);
+    glm::quat rotation = glm::quat(glm::vec3(0.0));
+    glm::quat last_rotation = glm::quat(glm::vec3(0.0));
 
 public:
     glm::vec3 rotation_direction = glm::vec3(0.0);
@@ -92,31 +87,20 @@ public:
     {
         return rotation;
     }
-    // inline glm::quat getLastRotation()
-    // {
-    //     return last_rotation;
-    // }
-    // inline void setLastRotation(glm::quat rot)
-    // {
-    //     last_rotation = rot;
-    // }
-    // inline void setRotation(glm::quat rot)
-    // {
-    //     rotation = rot;
-    // }
 
-    void Put(glm::vec3 pos);
+    void Put(glm::vec3 pos = glm::vec3(0.0));
     void Put(double x = 0.0, double y = 0.0, double z = 0.0);
-    void Scale(glm::vec3 scl);
-    void Scale(double x = 0.0, double y = 0.0, double z = 0.0);
-    void Rotate(glm::vec3 rot);
+    void Scale(glm::vec3 scl = glm::vec3(1.0));
+    void Scale(double x = 1.0, double y = 1.0, double z = 1.0);
+    void Rotate(glm::vec3 rot = glm::vec3(0.0));
     void Rotate(double x = 0.0, double y = 0.0, double z = 0.0);
 
     void Image(unsigned int index);
 
-    void draw(shader &_shader, double alpha, transform_order_type transformOrder = TRANSFORM_DEFAULT);
+    void draw(shader &_shader, double alpha);
+    void static_draw(shader &_shader);
 
-    model_primitive(model_primitive_type type);
+    model_primitive(model_primitive_type type, bool dyn = false);
     model_primitive();
 };
 

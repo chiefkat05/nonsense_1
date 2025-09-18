@@ -26,7 +26,7 @@ void game::setup_level(const char *level_path)
     object_type new_type = OBJ_SOLID;
     unsigned int new_texture = 0;
 
-    create_object_types making = COBJ_NONE;
+    level_command_types making = LCOMM_NONE;
     model_primitive_type model_type = MODEL_NONE;
     int step = 0;
     std::string word, line;
@@ -36,66 +36,71 @@ void game::setup_level(const char *level_path)
         std::stringstream ss(line);
         while (std::getline(ss, word, ' '))
         {
-            if (making == COBJ_NONE)
+            if (making == LCOMM_NONE)
             {
                 if (word == "cube" || word == "box")
                 {
-                    making = COBJ_PRIMITIVE;
+                    making = LCOMM_PRIMITIVE;
                     pixel_division = 1.0;
                     model_type = MODEL_CUBE;
                     continue;
                 }
                 if (word == "pcube" || word == "pbox" || word == "pixelcube" || word == "pixelbox")
                 {
-                    making = COBJ_PRIMITIVE_PIXELPOS;
+                    making = LCOMM_PRIMITIVE_PIXELPOS;
                     pixel_division = pixel_scale;
                     model_type = MODEL_CUBE;
                     continue;
                 }
                 if (word == "quad" || word == "plane")
                 {
-                    making = COBJ_PRIMITIVE;
+                    making = LCOMM_PRIMITIVE;
                     pixel_division = 1.0;
                     model_type = MODEL_QUAD;
                     continue;
                 }
                 if (word == "pquad" || word == "pplane" || word == "pixelquad" || word == "pixelplane")
                 {
-                    making = COBJ_PRIMITIVE;
+                    making = LCOMM_PRIMITIVE;
                     pixel_division = pixel_scale;
                     model_type = MODEL_QUAD;
                     continue;
                 }
                 if (word == "pyramid")
                 {
-                    making = COBJ_PRIMITIVE;
+                    making = LCOMM_PRIMITIVE;
                     pixel_division = 1.0;
                     model_type = MODEL_PYRAMID;
                     continue;
                 }
                 if (word == "ppyramid" || word == "pixelpyramid")
                 {
-                    making = COBJ_PRIMITIVE;
+                    making = LCOMM_PRIMITIVE;
                     pixel_division = pixel_scale;
                     model_type = MODEL_PYRAMID;
                     continue;
                 }
                 if (word == "tri" || word == "triangle")
                 {
-                    making = COBJ_PRIMITIVE;
+                    making = LCOMM_PRIMITIVE;
                     pixel_division = 1.0;
                     model_type = MODEL_TRI;
                     continue;
                 }
                 if (word == "ptri" || word == "ptriangle" || word == "pixeltri" || word == "pixeltriangle")
                 {
-                    making = COBJ_PRIMITIVE;
+                    making = LCOMM_PRIMITIVE;
                     pixel_division = pixel_scale;
                     model_type = MODEL_TRI;
                     continue;
                 }
+                if (word == "move" || word == "translate" || word == "slide")
+                {
+                    making = LCOMM_MOVE;
+                    continue;
+                }
             }
-            if (making == COBJ_PRIMITIVE || making == COBJ_PRIMITIVE_PIXELPOS)
+            if (making == LCOMM_PRIMITIVE || making == LCOMM_PRIMITIVE_PIXELPOS)
             {
                 switch (step)
                 {
@@ -124,7 +129,7 @@ void game::setup_level(const char *level_path)
                     new_type = static_cast<object_type>(std::stoi(word));
 
                     new_level.addObject(model_type, new_position, new_scale, new_texture, new_type);
-                    making = COBJ_NONE;
+                    making = LCOMM_NONE;
                     step = -1;
                     break;
                 }
@@ -153,7 +158,7 @@ void game::draw(shader &shad, double alpha)
 
 void level::addObject(model_primitive_type model_type, glm::vec3 pos, glm::vec3 scale, unsigned int texture, object_type type)
 {
-    model_primitive c(model_type);
+    model_primitive c(model_type, false);
     c.Put(pos);
     c.Scale(scale);
     c.Image(texture);
@@ -198,7 +203,6 @@ void level::scaleObject(glm::vec3 scale, unsigned int index)
 
 void level::drawLevel(shader &shad, double alpha) // please add multi-shader support
 {
-    // calc inter positions here
     for (int i = 0; i < object_count; ++i)
     {
         objects[i].visual.draw(shad, alpha);

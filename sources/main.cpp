@@ -150,9 +150,6 @@ int main()
     double frame_accumulation = 0.0;
     glm::vec3 prevCameraPos = cameraPos;
 
-    model_primitive cube(MODEL_CUBE);
-    model_primitive why(MODEL_QUAD);
-    why.Put(0.5f, 0.5f, 0.5f);
     loop = [&]
     {
         if (ma_sound_at_end(&music))
@@ -177,7 +174,6 @@ int main()
 
             processInput(window);
 
-            // cube.rotation_direction = glm::vec3(0.0, )
             mainGame.update(tick_time, cameraPos, cameraVelocity, plcol, onGround); // player movement happens here (no moving objects yet)
             frame_accumulation -= tick_time;
         }
@@ -193,7 +189,6 @@ int main()
 
         // inter-update here
         mainGame.draw(shader_main, alpha_time);
-        why.draw(shader_main, alpha_time);
 
         glfwSwapBuffers((GLFWwindow *)window);
         glfwPollEvents();
