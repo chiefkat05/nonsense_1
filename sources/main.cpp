@@ -250,9 +250,9 @@ void mouse_callback(GLFWwindow *window, double xpos, double ypos)
     // cameraFront = glm::normalize(cameraDirection);
     // cameraRight = glm::normalize(glm::cross(cameraFront, up));
 
-    cameraXZFront = glm::vec3(0.0); // problem: the commented-out code in the input function works, but it has the issue where you slow down when looking up. Please figure out and fix!
-    cameraXZFront.x = std::cos(cameraRotation.w);
-    cameraXZFront.z = std::sin(cameraRotation.x + cameraRotation.y + cameraRotation.z);
+    // cameraXZFront = glm::vec3(0.0); // problem: the commented-out code in the input function works, but it has the issue where you slow down when looking up. Please figure out and fix!
+    // cameraXZFront.x = std::cos(cameraRotation.w);
+    // cameraXZFront.z = std::sin(cameraRotation.x + cameraRotation.y + cameraRotation.z);
     // cameraDirection = glm::dvec3(0.0);
     // cameraDirection.x = std::cos(glm::radians(yaw));
     // cameraDirection.z = std::sin(glm::radians(yaw));
@@ -277,12 +277,13 @@ void processInput(GLFWwindow *window)
     //     ma_sound_start(&stepsfx);
     // }
 
-    // gotta rotate cameraXZFront according to camearRotation
-    // camearXZFront = pain;
+    glm::quat swappedRot = glm::quat(cameraRotation); // I think this could be done better but that's all I got the patience for this time
+    swappedRot.w *= -1;
+    swappedRot.x = 0.0;
+    swappedRot.z = 0.0;
+    swappedRot = glm::normalize(swappedRot);
+    cameraRight = glm::cross(cameraXZFront, up);
 
-    // glm::quat swappedRot = glm::quat(cameraRotation);
-    // swappedRot.w *= -1;
-    // cameraXZFront = glm::rotate(swappedRot, cameraFront);
     glm::vec3 moveDir = glm::vec3(0.0);
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
     {
