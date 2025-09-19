@@ -38,7 +38,7 @@ glm::vec3 cameraFront = glm::vec3(0.0, 0.0, -1.0);
 glm::vec3 cameraXZFront = glm::vec3(0.0, 0.0, -1.0);
 glm::vec3 up = glm::vec3(0.0, 1.0, 0.0);
 glm::vec3 cameraRight = glm::vec3(0.0);
-glm::vec3 cameraDirection = glm::vec3(0.0);
+glm::quat cameraRotation = glm::quat(glm::vec3(0.0));
 glm::vec3 cameraVelocity = glm::vec3(0.0);
 const double CAMERA_SPEED = 4.0;
 
@@ -184,8 +184,15 @@ int main()
 
         // cameraDirection = glm::slerp(cameraDirection, glm::quat(glm::vec3(newDir)), alpha_time);
         // cameraFront = cameraDirection;
-        view = glm::lookAt(cameraOffset, cameraOffset + cameraFront, up);
-        shader_main.setMat4("view", view);
+        // view = glm::lookAt(cameraOffset, cameraOffset + cameraFront, up);
+        glm::mat4 mCamRotation = glm::mat4(1.0);
+        mCamRotation = glm::mat4_cast(cameraRotation);
+
+        glm::mat4 mCamTranslate = glm::mat4(1.0);
+        mCamTranslate = glm::translate(mCamTranslate, -cameraPos); // not right I think it needs to be cameraFront?
+
+        view = mCamRotation * mCamTranslate;
+        shader_main.setMat4("view", view); // btw backface culling is not that hard but you need to change all the vertex data according to the clockwise/counter-clockwise thing (( all triangles should be clockwise when looking at them from the intended outside space.)) then enable glcullingfunc or whatever
 
         // inter-update here
         mainGame.draw(shader_main, alpha_time);
@@ -217,7 +224,7 @@ void mouse_callback(GLFWwindow *window, double xpos, double ypos)
     float xoffset = xpos - 0.0;
     float yoffset = 0.0 - ypos;
 
-    const float sensitivity = 0.06f;
+    const float sensitivity = 0.001f;
     xoffset *= sensitivity;
     yoffset *= sensitivity;
 
@@ -227,21 +234,29 @@ void mouse_callback(GLFWwindow *window, double xpos, double ypos)
         pitch += yoffset;
     }
 
-    if (pitch > 89.0f)
-        pitch = 89.0f;
-    if (pitch < -89.0f)
-        pitch = -89.0f;
+    if (pitch > 1.5f)
+        pitch = 1.5f;
+    if (pitch < -1.5f)
+        pitch = -1.5f;
 
-    cameraDirection.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
-    cameraDirection.y = sin(glm::radians(pitch));
-    cameraDirection.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
-    cameraFront = glm::normalize(cameraDirection);
-    cameraRight = glm::normalize(glm::cross(cameraFront, up));
+    // cameraDirection.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
+    // cameraDirection.y = sin(glm::radians(pitch));
+    // cameraDirection.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+    glm::quat qPitch = glm::angleAxis(static_cast<float>(-pitch), glm::vec3(1.0, 0.0, 0.0)); // now the movement needs to be effected by the
+    glm::quat qYaw = glm::angleAxis(static_cast<float>(yaw), glm::vec3(0.0, 1.0, 0.0));
 
-    cameraDirection = glm::dvec3(0.0);
-    cameraDirection.x = std::cos(glm::radians(yaw));
-    cameraDirection.z = std::sin(glm::radians(yaw));
-    cameraXZFront = glm::normalize(cameraDirection);
+    cameraRotation = qPitch * qYaw;
+    cameraRotation = glm::normalize(cameraRotation);
+    // cameraFront = glm::normalize(cameraDirection);
+    // cameraRight = glm::normalize(glm::cross(cameraFront, up));
+
+    cameraXZFront = glm::vec3(0.0); // problem: the commented-out code in the input function works, but it has the issue where you slow down when looking up. Please figure out and fix!
+    cameraXZFront.x = std::cos(cameraRotation.w);
+    cameraXZFront.z = std::sin(cameraRotation.x + cameraRotation.y + cameraRotation.z);
+    // cameraDirection = glm::dvec3(0.0);
+    // cameraDirection.x = std::cos(glm::radians(yaw));
+    // cameraDirection.z = std::sin(glm::radians(yaw));
+    // cameraXZFront = glm::normalize(cameraDirection);
 
     glfwSetCursorPos(window, 0, 0);
 
@@ -261,6 +276,13 @@ void processInput(GLFWwindow *window)
     //     stepTimer = 5.0;
     //     ma_sound_start(&stepsfx);
     // }
+
+    // gotta rotate cameraXZFront according to camearRotation
+    // camearXZFront = pain;
+
+    // glm::quat swappedRot = glm::quat(cameraRotation);
+    // swappedRot.w *= -1;
+    // cameraXZFront = glm::rotate(swappedRot, cameraFront);
     glm::vec3 moveDir = glm::vec3(0.0);
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
     {

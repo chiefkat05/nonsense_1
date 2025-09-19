@@ -8,7 +8,6 @@
 
 //quad test
 quad -2.0 1.0 0.0 1.0 1.0 1.0 0 1
-trigger touch move 0.0 1.0 0.0 //mock-up which doesn't do anything yet
 
 //pyramid test
 pyramid 2.0 1.0 0.0 1.0 1.0 1.0 0 1
