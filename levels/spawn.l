@@ -5,9 +5,16 @@
 //each texture is 16 pixels tall and wide, and the sign is 12 pixels wide and 8 pixels tall. so if you make a sign, the best thing you can do is make it a
 //pcube and set the scale to '12 8 2' or something similar as you can see below.
 
+//          cause   action   x pos   y pos   z pos   time   speed
+    trigger touch   move     0.0    -1.0     0.0     1.0    1.0
+//trigger starts the action once the cause is true, with the 
+
 
 //quad test
 quad -2.0 1.0 0.0 1.0 1.0 1.0 0 1
+//          cause   action   x pos   y pos   z pos   time   speed
+    trigger touch   move     0.0    -1.0     0.0     1.0    1.0
+    trigger none rotate 0.0 4.0 0.0 normal 0.0 2.0
 
 //pyramid test
 pyramid 2.0 1.0 0.0 1.0 1.0 1.0 0 1

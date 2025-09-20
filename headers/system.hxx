@@ -55,9 +55,7 @@ enum level_command_types
     LCOMM_NONE,
     LCOMM_PRIMITIVE,
     LCOMM_PRIMITIVE_PIXELPOS,
-    LCOMM_MOVE,
-    LCOMM_SCALE,
-    LCOMM_ROTATE
+    LCOMM_TRIGGER
 };
 class game
 {

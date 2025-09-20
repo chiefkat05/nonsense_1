@@ -22,10 +22,6 @@ void game::setup_level(const char *level_path)
         return;
     }
 
-    glm::vec3 new_position = glm::vec3(0.0), new_scale = glm::vec3(1.0);
-    object_type new_type = OBJ_SOLID;
-    unsigned int new_texture = 0;
-
     level_command_types making = LCOMM_NONE;
     model_primitive_type model_type = MODEL_NONE;
     int step = 0;
@@ -94,14 +90,27 @@ void game::setup_level(const char *level_path)
                     model_type = MODEL_TRI;
                     continue;
                 }
-                if (word == "move" || word == "translate" || word == "slide")
+                if (word == "trigger")
                 {
-                    making = LCOMM_MOVE;
+                    making = LCOMM_TRIGGER;
                     continue;
                 }
             }
+            if (making == LCOMM_TRIGGER) // after finishing this put it below LCOMM_PRIMITIVE creation for organization
+            {
+                // insert data here
+
+                switch (step)
+                {
+                }
+            }
+
             if (making == LCOMM_PRIMITIVE || making == LCOMM_PRIMITIVE_PIXELPOS)
             {
+                glm::vec3 new_position = glm::vec3(0.0), new_scale = glm::vec3(1.0);
+                object_type new_type = OBJ_SOLID;
+                unsigned int new_texture = 0;
+
                 switch (step)
                 {
                 case 0:
