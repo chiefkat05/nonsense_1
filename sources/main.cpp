@@ -166,8 +166,6 @@ int main()
         currentTime = glfwGetTime();
         delta_time = currentTime - lastTime;
 
-        // cube.setLastRotation(cube.getRotation());
-
         while (frame_accumulation >= tick_time)
         {
             prevCameraPos = cameraPos;
@@ -192,7 +190,7 @@ int main()
         mCamTranslate = glm::translate(mCamTranslate, -cameraPos); // not right I think it needs to be cameraFront?
 
         view = mCamRotation * mCamTranslate;
-        shader_main.setMat4("view", view); // btw backface culling is not that hard but you need to change all the vertex data according to the clockwise/counter-clockwise thing (( all triangles should be clockwise when looking at them from the intended outside space.)) then enable glcullingfunc or whatever
+        shader_main.setMat4("view", view);
 
         // inter-update here
         mainGame.draw(shader_main, alpha_time);
@@ -282,6 +280,7 @@ void processInput(GLFWwindow *window)
     swappedRot.x = 0.0;
     swappedRot.z = 0.0;
     swappedRot = glm::normalize(swappedRot);
+    cameraXZFront = glm::rotate(swappedRot, cameraFront);
     cameraRight = glm::cross(cameraXZFront, up);
 
     glm::vec3 moveDir = glm::vec3(0.0);

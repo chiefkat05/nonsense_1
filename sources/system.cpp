@@ -34,28 +34,28 @@ void game::setup_level(const char *level_path)
         {
             if (making == LCOMM_NONE)
             {
-                if (word == "cube" || word == "box")
+                if (word == "cube")
                 {
                     making = LCOMM_PRIMITIVE;
                     pixel_division = 1.0;
                     model_type = MODEL_CUBE;
                     continue;
                 }
-                if (word == "pcube" || word == "pbox" || word == "pixelcube" || word == "pixelbox")
+                if (word == "pcube")
                 {
                     making = LCOMM_PRIMITIVE_PIXELPOS;
                     pixel_division = pixel_scale;
                     model_type = MODEL_CUBE;
                     continue;
                 }
-                if (word == "quad" || word == "plane")
+                if (word == "quad")
                 {
                     making = LCOMM_PRIMITIVE;
                     pixel_division = 1.0;
                     model_type = MODEL_QUAD;
                     continue;
                 }
-                if (word == "pquad" || word == "pplane" || word == "pixelquad" || word == "pixelplane")
+                if (word == "pquad")
                 {
                     making = LCOMM_PRIMITIVE;
                     pixel_division = pixel_scale;
@@ -69,47 +69,48 @@ void game::setup_level(const char *level_path)
                     model_type = MODEL_PYRAMID;
                     continue;
                 }
-                if (word == "ppyramid" || word == "pixelpyramid")
+                if (word == "ppyramid")
                 {
                     making = LCOMM_PRIMITIVE;
                     pixel_division = pixel_scale;
                     model_type = MODEL_PYRAMID;
                     continue;
                 }
-                if (word == "tri" || word == "triangle")
+                if (word == "tri")
                 {
                     making = LCOMM_PRIMITIVE;
                     pixel_division = 1.0;
                     model_type = MODEL_TRI;
                     continue;
                 }
-                if (word == "ptri" || word == "ptriangle" || word == "pixeltri" || word == "pixeltriangle")
+                if (word == "ptri")
                 {
                     making = LCOMM_PRIMITIVE;
                     pixel_division = pixel_scale;
                     model_type = MODEL_TRI;
                     continue;
                 }
-                if (word == "trigger")
-                {
-                    making = LCOMM_TRIGGER;
-                    continue;
-                }
+                // if (word == "trigger")
+                // {
+                //     making = LCOMM_TRIGGER;
+                //     continue;
+                // }
             }
-            if (making == LCOMM_TRIGGER) // after finishing this put it below LCOMM_PRIMITIVE creation for organization
-            {
-                // insert data here
+            // if (making == LCOMM_TRIGGER) // after finishing this put it below LCOMM_PRIMITIVE creation for organization
+            // {
+            //     // insert data here
 
-                switch (step)
-                {
-                }
-            }
+            //     switch (step)
+            //     {
+            //     }
+            // }
 
             if (making == LCOMM_PRIMITIVE || making == LCOMM_PRIMITIVE_PIXELPOS)
             {
-                glm::vec3 new_position = glm::vec3(0.0), new_scale = glm::vec3(1.0);
-                object_type new_type = OBJ_SOLID;
-                unsigned int new_texture = 0;
+                static glm::vec3 new_position = glm::vec3(0.0);
+                static glm::vec3 new_scale = glm::vec3(1.0);
+                static object_type new_type = OBJ_SOLID;
+                static unsigned int new_texture = 0;
 
                 switch (step)
                 {
@@ -140,6 +141,7 @@ void game::setup_level(const char *level_path)
                     new_level.addObject(model_type, new_position, new_scale, new_texture, new_type);
                     making = LCOMM_NONE;
                     step = -1;
+                    std::cout << model_type << " w\n";
                     break;
                 }
 

@@ -276,6 +276,7 @@ void model_primitive::static_draw(shader &_shader)
 
     if (!static_model_set)
     {
+        std::cout << "fix\n";
         model = glm::mat4(1.0);
         glm::mat4 translate_model = glm::translate(model, position);
 
