@@ -1,4 +1,5 @@
 #include "../headers/collisions.hxx"
+#include <iostream>
 
 bool colliding(aabb first, aabb second)
 {
@@ -74,24 +75,27 @@ bool colliding(glm::vec3 point, aabb box)
     }
     return true;
 }
-bool colliding(raycast ray, aabb box)
+bool colliding(raycast ray, aabb box, glm::vec3 &point)
 {
-    double tmin = -std::numeric_limits<double>::infinity();
+    double tmin = 0.0;
     double tmax = std::numeric_limits<double>::infinity();
 
-    glm::vec3 box_min = box.pos - box.scale;
-    glm::vec3 box_max = box.pos + box.scale;
+    glm::vec3 box_min = box.pos - box.scale * 0.5f;
+    glm::vec3 box_max = box.pos + box.scale * 0.5f;
     for (int i = 0; i < 3; ++i)
     {
         if (std::abs(ray.dir[i]) == 0.0)
         {
             if (!colliding(ray.pos, box))
                 return false;
+
+            return true;
         }
 
-        double ood = 1.0 / ray.dir[i];
-        double t1 = (box_min[i] - ray.pos[i]) * ood;
-        double t2 = (box_max[i] - ray.pos[i]) * ood;
+        double t1 = (box_min[i] - ray.pos[i]) / ray.dir[i];
+        double t2 = (box_max[i] - ray.pos[i]) / ray.dir[i];
+        // double t1 = box_min[i] / ray.dir[i]; // 0,0,0 position
+        // double t2 = box_max[i] / ray.dir[i];
 
         if (t1 > t2)
         {
@@ -102,14 +106,13 @@ bool colliding(raycast ray, aabb box)
 
         tmin = std::max(tmin, t1);
         tmax = std::min(tmax, t2);
+
+        if (tmin > tmax)
+            return false;
     }
 
-    if (tmax < 0.0)
-        return false;
-    if (tmin > tmax)
-        return false;
-    // if (tmin < 0.0)
-    //     return true;
+    point = ray.pos + ray.dir * static_cast<float>(tmin);
+    // point = ray.pos + ray.dir;
 
     return true;
 }

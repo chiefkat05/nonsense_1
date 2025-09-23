@@ -5,13 +5,15 @@
 //each texture is 16 pixels tall and wide, and the sign is 12 pixels wide and 8 pixels tall. so if you make a sign, the best thing you can do is make it a
 //pcube and set the scale to '12 8 2' or something similar as you can see below.
 
+//var num 4
+
 //quad test
 quad -2.5 1.5 0.0 1.0 1.0 1.0 0 1
-trigger touch move -1.0 0.0 0.0 0.0
+trigger var 0 equals 5 move 0.0 -1.0 0.0 4.0
 
 //pyramid test
 pyramid 2.0 1.0 0.0 1.0 1.0 1.0 0 1
-trigger seen move 0.0 1.0 0.0 0.0
+trigger seen move 0.01 0.01 0.0 0.1
 
 //tri test
 tri 4.0 1.0 0.0 1.0 1.0 1.0 0 1

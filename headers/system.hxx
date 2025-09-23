@@ -56,6 +56,7 @@ struct level_trigger
 {
     bool triggered = false, timed = true;
     unsigned int objIndex = 0;
+    int varValueCompare = 0;
     trigger_cause_type ctype = TCAUSE_STARTGAME;
     trigger_type type = TTYPE_MOVEOBJ;
     glm::vec3 pos = glm::vec3(0.0);
@@ -86,9 +87,15 @@ public:
     {
         return trigger_count;
     }
+    inline unsigned int getVariableCount()
+    {
+        return variable_count;
+    }
 
     void addObject(model_primitive_type model_type, glm::vec3 pos, glm::vec3 scale, unsigned int texture, object_type type);
-    void addTrigger(unsigned int objIndex, trigger_cause_type tct, trigger_type tt, glm::vec3 pos, double time);
+    void addTriggerObject(unsigned int objIndex, trigger_cause_type tct, trigger_type tt, glm::vec3 pos, double time);
+    void addVariable(std::string id, double value);
+    void addTriggerVariable(unsigned int varIndex, int varValue, trigger_cause_type tct, trigger_type tt, glm::vec3 pos, double time);
 
     void scaleObject(glm::vec3 scale, unsigned int index);
 

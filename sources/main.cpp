@@ -172,7 +172,7 @@ int main()
 
             processInput(window);
 
-            mainGame.update(tick_time, cameraPos, cameraVelocity, plcol, cameraFront, onGround); // player movement happens here (no moving objects yet)
+            mainGame.update(tick_time, cameraPos, cameraVelocity, plcol, cameraFront, onGround);
             frame_accumulation -= tick_time;
         }
         double alpha_time = frame_accumulation / tick_time;
@@ -184,7 +184,7 @@ int main()
         mCamRotation = glm::mat4_cast(cameraRotation);
 
         glm::mat4 mCamTranslate = glm::mat4(1.0);
-        mCamTranslate = glm::translate(mCamTranslate, -cameraPos);
+        mCamTranslate = glm::translate(mCamTranslate, -cameraPos - glm::vec3(0.0, 0.5, 0.0));
 
         view = mCamRotation * mCamTranslate;
         shader_main.setMat4("view", view);
@@ -234,14 +234,19 @@ void mouse_callback(GLFWwindow *window, double xpos, double ypos)
     if (pitch < -1.5f)
         pitch = -1.5f;
 
-    // cameraDirection.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
-    // cameraDirection.y = sin(glm::radians(pitch));
-    // cameraDirection.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
-    glm::quat qPitch = glm::angleAxis(static_cast<float>(-pitch), glm::vec3(1.0, 0.0, 0.0)); // now the movement needs to be effected by the
+    glm::quat qPitch = glm::angleAxis(static_cast<float>(-pitch), glm::vec3(1.0, 0.0, 0.0));
     glm::quat qYaw = glm::angleAxis(static_cast<float>(yaw), glm::vec3(0.0, 1.0, 0.0));
+    glm::quat nqYaw = glm::angleAxis(static_cast<float>(-yaw), glm::vec3(0.0, 1.0, 0.0));
 
-    cameraRotation = qPitch * qYaw;
-    cameraRotation = glm::normalize(cameraRotation);
+    cameraRotation = glm::normalize(qPitch * qYaw);
+
+    glm::quat lookDirection = glm::angleAxis(static_cast<float>(yaw), glm::vec3(0.0, -1.0, 0.0)); // this took so long to figure out you have no idea :)
+    lookDirection *= glm::angleAxis(static_cast<float>(pitch), glm::vec3(1.0, 0.0, 0.0));
+    cameraFront = glm::normalize(glm::rotate(lookDirection, glm::vec3(0.0, 0.0, -1.0)));
+
+    glm::quat swappedRot = glm::normalize(glm::quat(qPitch * nqYaw));
+    cameraXZFront = glm::rotate(swappedRot, glm::vec3(0.0, 0.0, -1.0));
+    cameraRight = glm::cross(cameraXZFront, up);
 
     glfwSetCursorPos(window, 0, 0);
 
@@ -261,17 +266,6 @@ void processInput(GLFWwindow *window)
     //     stepTimer = 5.0;
     //     ma_sound_start(&stepsfx);
     // }
-
-    glm::quat swappedRot = glm::quat(cameraRotation); // I think this could be done better but that's all I got the patience for this time
-    cameraFront = glm::vec3(0.0, 0.0, -1.0);
-    cameraFront = glm::rotate(swappedRot, cameraFront);
-    swappedRot.w *= -1;
-    swappedRot.x = 0.0;
-    swappedRot.z = 0.0;
-    swappedRot = glm::normalize(swappedRot);
-    cameraXZFront = glm::vec3(0.0, 0.0, -1.0);
-    cameraXZFront = glm::rotate(swappedRot, cameraXZFront);
-    cameraRight = glm::cross(cameraXZFront, up);
 
     glm::vec3 moveDir = glm::vec3(0.0);
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)

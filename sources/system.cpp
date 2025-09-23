@@ -24,7 +24,6 @@ void game::setup_level(const char *level_path)
 
     level_command_type making = LCOMM_NONE;
     model_primitive_type model_type = MODEL_NONE;
-    bool lastMadeWasVariable = false;
     int step = 0;
     std::string word, line;
     double pixel_division = 1.0;
@@ -96,112 +95,15 @@ void game::setup_level(const char *level_path)
                     making = LCOMM_TRIGGER;
                     continue;
                 }
-            }
-            // in the ifmakingvariable thing, set lastMadeWasVariable to true at the end
-            if (making == LCOMM_TRIGGER) // after finishing this put it below LCOMM_PRIMITIVE creation for organization
-            {
-                // insert data here
-                static trigger_cause_type tctype = TCAUSE_STARTGAME;
-                static trigger_type ttype = TTYPE_MOVEOBJ;
-                static glm::vec3 pos = glm::vec3(0.0);
-                static double time = 0.0;
-
-                switch (step)
+                if (word == "var")
                 {
-                case 0:
-                    if (word == "start")
-                    {
-                        tctype = TCAUSE_STARTGAME;
-                    }
-                    else if (word == "touch")
-                    {
-                        tctype = TCAUSE_COLLISION;
-                    }
-                    else if (word == "seen")
-                    {
-                        tctype = TCAUSE_LOOKAT;
-                    }
-                    else if (word == "vequal")
-                    {
-                        tctype = TCAUSE_VARIABLEEQUAL;
-                        step = 7;
-                    }
-                    else if (word == "vgreater")
-                    {
-                        tctype = TCAUSE_VARIABLEGREATER;
-                        step = 7;
-                    }
-                    else if (word == "vlesser")
-                    {
-                        tctype = TCAUSE_VARIABLELESSER;
-                        step = 7;
-                    }
-                    else
-                    {
-                        std::cout << "\tLevel load error: no valid trigger cause found. Please refer to the documentation or check for typos.\n";
-                        goto finish;
-                    }
-                    break;
-                case 1:
-                    if (word == "move")
-                    {
-                        ttype = TTYPE_MOVEOBJ;
-                        pixel_division = 1.0;
-                    }
-                    else if (word == "pmove")
-                    {
-                        ttype = TTYPE_MOVEOBJ;
-                        pixel_division = pixel_scale;
-                    }
-                    else if (word == "scale")
-                    {
-                        ttype = TTYPE_SCALEOBJ;
-                        pixel_division = 1.0;
-                    }
-                    else if (word == "pscale")
-                    {
-                        ttype = TTYPE_SCALEOBJ;
-                        pixel_division = pixel_scale;
-                    }
-                    else
-                    {
-                        std::cout << "\tLevel load error: no valid trigger response found. Please refer to the documentation or check for typos.\n";
-                        goto finish;
-                    }
-                    break;
-                case 2:
-                    pos.x = std::stod(word) / pixel_division;
-                    break;
-                case 3:
-                    pos.y = std::stod(word) / pixel_division;
-                    break;
-                case 4:
-                    pos.z = std::stod(word) / pixel_division;
-                    break;
-                case 5:
-                    time = std::stod(word);
-                    break;
-                case 6:
-                    goto finish;
-                    break;
-                default:
-                finish:
-                    if (lastMadeWasVariable)
-                    {
-                        new_level.addTrigger(new_level.getTriggerCount() - 1, tctype, ttype, pos, time);
-                    }
-                    else
-                    {
-                        new_level.addTrigger(new_level.getObjectCount() - 1, tctype, ttype, pos, time);
-                    }
-                    making = LCOMM_NONE;
-                    step = -1;
-                    break;
+                    making = LCOMM_TRIGGER;
+                    continue;
                 }
-
-                ++step;
             }
-
+            if (making == LCOMM_VARIABLE)
+            {
+            }
             if (making == LCOMM_PRIMITIVE || making == LCOMM_PRIMITIVE_PIXELPOS)
             {
                 static glm::vec3 new_position = glm::vec3(0.0);
@@ -238,7 +140,125 @@ void game::setup_level(const char *level_path)
                     new_level.addObject(model_type, new_position, new_scale, new_texture, new_type);
                     making = LCOMM_NONE;
                     step = -1;
-                    lastMadeWasVariable = false;
+                    break;
+                }
+
+                ++step;
+            }
+            if (making == LCOMM_TRIGGER)
+            {
+                // insert data here
+                static trigger_cause_type tctype = TCAUSE_STARTGAME;
+                static trigger_type ttype = TTYPE_MOVEOBJ;
+                static glm::vec3 trigger_pos = glm::vec3(0.0);
+                static double trigger_time = 0.0;
+                static int variable_index = -1;
+                static int variable_value = 0;
+
+                switch (step)
+                {
+                case 0:
+                    if (word == "start")
+                    {
+                        tctype = TCAUSE_STARTGAME;
+                    }
+                    else if (word == "touch")
+                    {
+                        tctype = TCAUSE_COLLISION;
+                    }
+                    else if (word == "seen")
+                    {
+                        tctype = TCAUSE_LOOKAT;
+                    }
+                    else if (word == "var")
+                    {
+                        step = 6; // becomes 7 before next round
+                    }
+                    else
+                    {
+                        std::cout << word << "\tLevel load error: no valid trigger cause found. Please refer to the documentation or check for typos.\n";
+                        goto finish;
+                    }
+                    break;
+                case 1:
+                    if (word == "move")
+                    {
+                        ttype = TTYPE_MOVEOBJ;
+                        pixel_division = 1.0;
+                    }
+                    else if (word == "pmove")
+                    {
+                        ttype = TTYPE_MOVEOBJ;
+                        pixel_division = pixel_scale;
+                    }
+                    else if (word == "scale")
+                    {
+                        ttype = TTYPE_SCALEOBJ;
+                        pixel_division = 1.0;
+                    }
+                    else if (word == "pscale")
+                    {
+                        ttype = TTYPE_SCALEOBJ;
+                        pixel_division = pixel_scale;
+                    }
+                    else
+                    {
+                        std::cout << "\tLevel load error: no valid trigger response found. Please refer to the documentation or check for typos.\n";
+                        goto finish;
+                    }
+                    break;
+                case 2:
+                    trigger_pos.x = std::stod(word) / pixel_division;
+                    break;
+                case 3:
+                    trigger_pos.y = std::stod(word) / pixel_division;
+                    break;
+                case 4:
+                    trigger_pos.z = std::stod(word) / pixel_division;
+                    break;
+                case 5:
+                    trigger_time = std::stod(word);
+                    break;
+                case 6:
+                    goto finish;
+                    break;
+                case 7:
+                    variable_index = std::stoi(word);
+                    break;
+                case 8:
+                    if (word == "equals")
+                    {
+                        tctype = TCAUSE_VARIABLEEQUAL;
+                    }
+                    else if (word == "lessthan")
+                    {
+                        tctype = TCAUSE_VARIABLELESSER;
+                    }
+                    else if (word == "greaterthan")
+                    {
+                        tctype = TCAUSE_VARIABLEGREATER;
+                    }
+                    else
+                    {
+                        std::cout << "Error: " << word << " not recognised as valid trigger variable operation. Please check your level file and fix any mistakes.\n";
+                    }
+                    break;
+                case 9:
+                    variable_value = std::stoi(word);
+                    step = 0; // becomes 1 before next round
+                    break;
+                default:
+                finish:
+                    if (tctype != TCAUSE_VARIABLEEQUAL && tctype != TCAUSE_VARIABLEGREATER && tctype != TCAUSE_VARIABLELESSER)
+                    {
+                        new_level.addTriggerObject(new_level.getObjectCount() - 1, tctype, ttype, trigger_pos, trigger_time);
+                    }
+                    else
+                    {
+                        new_level.addTriggerVariable(variable_index, variable_value, tctype, ttype, trigger_pos, trigger_time);
+                    }
+                    making = LCOMM_NONE;
+                    step = -1;
                     break;
                 }
 
@@ -276,10 +296,15 @@ void level::addObject(model_primitive_type model_type, glm::vec3 pos, glm::vec3 
     objects.push_back({c, col, type});
     ++object_count;
 }
-void level::addTrigger(unsigned int objIndex, trigger_cause_type tct, trigger_type tt, glm::vec3 pos, double time)
+void level::addTriggerObject(unsigned int objIndex, trigger_cause_type tct, trigger_type tt, glm::vec3 pos, double time)
 {
-    triggers.push_back({false, (time != 0.0), objIndex, tct, tt, pos, time});
+    triggers.push_back({false, (time != 0.0), objIndex, 0, tct, tt, pos, time});
     objects[objIndex].visual.makeDynamic();
+    ++trigger_count;
+}
+void level::addTriggerVariable(unsigned int varIndex, int varValue, trigger_cause_type tct, trigger_type tt, glm::vec3 pos, double time)
+{
+    triggers.push_back({false, (time != 0.0), varIndex, varValue, tct, tt, pos, time});
     ++trigger_count;
 }
 
@@ -302,7 +327,7 @@ void level::drawLevel(shader &shad, double alpha) // please add multi-shader sup
         objects[i].visual.draw(shad, alpha);
     }
 }
-// add tick system?
+
 void level::updatePlayerPhysics(double tick_time, glm::vec3 &player_position, glm::vec3 &player_velocity, aabb &player_collider, bool &on_floor)
 {
     if (object_count == 0)
@@ -323,7 +348,8 @@ void level::updatePlayerPhysics(double tick_time, glm::vec3 &player_position, gl
         if (objects[i].type == OBJ_PASSTHROUGH)
             continue;
 
-        putAABB(&objects[i].collider, objects[i].visual.getPos());
+        // putAABB(&objects[i].collider, objects[i].visual.getPos());
+        objects[i].collider.pos = objects[i].visual.getPos();
         objects[i].collider.scale = objects[i].visual.getScale();
         collision col = normal_collision(&player_collider, &objects[i].collider, player_velocity * static_cast<float>(tick_time), glm::vec3(0.0));
         if (col.hit)
@@ -364,6 +390,7 @@ void level::updatePlayerPhysics(double tick_time, glm::vec3 &player_position, gl
     if (!on_floor)
         player_velocity.y += 0.5 * gravity * tick_time;
 }
+
 void level::updateTriggerChecks(aabb &playerCollider, glm::vec3 &camPos, glm::vec3 &camDir)
 {
     for (int i = 0; i < trigger_count; ++i)
@@ -385,12 +412,16 @@ void level::updateTriggerChecks(aabb &playerCollider, glm::vec3 &camPos, glm::ve
             break;
         case TCAUSE_LOOKAT:
         {
-            raycast ray = {camPos, camDir};
-            bool raycasthit = colliding(ray, objects[triggers[i].objIndex].collider);
+            raycast ray = {camPos + glm::vec3(0.0, 0.5, 0.0), glm::normalize(camDir)};
+            glm::vec3 hitPos = glm::vec3(0.0);
+            bool raycasthit = colliding(ray, objects[triggers[i].objIndex].collider, hitPos);
 
-            if (raycasthit)
+            glm::vec3 boxmin = objects[triggers[i].objIndex].collider.pos - objects[triggers[i].objIndex].collider.scale;
+            glm::vec3 boxmax = objects[triggers[i].objIndex].collider.pos + objects[triggers[i].objIndex].collider.scale;
+            if (raycasthit && !triggers[i].triggered)
             {
-                std::cout << "WHooooo!\n";
+                triggers[i].triggered = true;
+                triggers[i].timerDown = triggers[i].time;
             }
         }
         break;
@@ -419,6 +450,8 @@ void level::updateTriggerPhysics(double tick_time)
         {
         case TTYPE_MOVEOBJ:
             objects[triggers[i].objIndex].visual.Move(triggers[i].pos * static_cast<float>(tick_time));
+            objects[triggers[i].objIndex].collider.pos = objects[triggers[i].objIndex].visual.getPos();
+            // std::cout << objects[triggers[i].objIndex].visual.getPos().y << " triggered\n";
             break;
         default:
             break;

@@ -275,6 +275,11 @@ void model_primitive::draw(shader &_shader, double alpha)
     _shader.setVec2("texture_pixel_scale", glm::vec2(1.0) / glm::vec2(allTextures.getTextureAtIndex(textureIndex)->getSize()));
     _shader.setMat4("model", model);
 
+    if (alpha == 1.0)
+    {
+        std::cout << "Hello\n";
+    }
+
     glBindVertexArray(VAO);
     glDrawArrays(GL_TRIANGLES, 0, vertex_count);
 }
