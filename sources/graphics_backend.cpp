@@ -206,6 +206,16 @@ void model_primitive::Put(double x, double y, double z)
     last_position = position;
     position = glm::vec3(x, y, z);
 }
+void model_primitive::Move(glm::vec3 pos)
+{
+    last_position = position;
+    position += pos;
+}
+void model_primitive::Move(double x, double y, double z)
+{
+    last_position = position;
+    position += glm::vec3(x, y, z);
+}
 void model_primitive::Scale(glm::vec3 scl)
 {
     last_scale = scale;
@@ -276,7 +286,6 @@ void model_primitive::static_draw(shader &_shader)
 
     if (!static_model_set)
     {
-        std::cout << "fix\n";
         model = glm::mat4(1.0);
         glm::mat4 translate_model = glm::translate(model, position);
 

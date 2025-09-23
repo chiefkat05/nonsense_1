@@ -22,8 +22,9 @@ void game::setup_level(const char *level_path)
         return;
     }
 
-    level_command_types making = LCOMM_NONE;
+    level_command_type making = LCOMM_NONE;
     model_primitive_type model_type = MODEL_NONE;
+    bool lastMadeWasVariable = false;
     int step = 0;
     std::string word, line;
     double pixel_division = 1.0;
@@ -90,20 +91,116 @@ void game::setup_level(const char *level_path)
                     model_type = MODEL_TRI;
                     continue;
                 }
-                // if (word == "trigger")
-                // {
-                //     making = LCOMM_TRIGGER;
-                //     continue;
-                // }
+                if (word == "trigger")
+                {
+                    making = LCOMM_TRIGGER;
+                    continue;
+                }
             }
-            // if (making == LCOMM_TRIGGER) // after finishing this put it below LCOMM_PRIMITIVE creation for organization
-            // {
-            //     // insert data here
+            // in the ifmakingvariable thing, set lastMadeWasVariable to true at the end
+            if (making == LCOMM_TRIGGER) // after finishing this put it below LCOMM_PRIMITIVE creation for organization
+            {
+                // insert data here
+                static trigger_cause_type tctype = TCAUSE_STARTGAME;
+                static trigger_type ttype = TTYPE_MOVEOBJ;
+                static glm::vec3 pos = glm::vec3(0.0);
+                static double time = 0.0;
 
-            //     switch (step)
-            //     {
-            //     }
-            // }
+                switch (step)
+                {
+                case 0:
+                    if (word == "start")
+                    {
+                        tctype = TCAUSE_STARTGAME;
+                    }
+                    else if (word == "touch")
+                    {
+                        tctype = TCAUSE_COLLISION;
+                    }
+                    else if (word == "seen")
+                    {
+                        tctype = TCAUSE_LOOKAT;
+                    }
+                    else if (word == "vequal")
+                    {
+                        tctype = TCAUSE_VARIABLEEQUAL;
+                        step = 7;
+                    }
+                    else if (word == "vgreater")
+                    {
+                        tctype = TCAUSE_VARIABLEGREATER;
+                        step = 7;
+                    }
+                    else if (word == "vlesser")
+                    {
+                        tctype = TCAUSE_VARIABLELESSER;
+                        step = 7;
+                    }
+                    else
+                    {
+                        std::cout << "\tLevel load error: no valid trigger cause found. Please refer to the documentation or check for typos.\n";
+                        goto finish;
+                    }
+                    break;
+                case 1:
+                    if (word == "move")
+                    {
+                        ttype = TTYPE_MOVEOBJ;
+                        pixel_division = 1.0;
+                    }
+                    else if (word == "pmove")
+                    {
+                        ttype = TTYPE_MOVEOBJ;
+                        pixel_division = pixel_scale;
+                    }
+                    else if (word == "scale")
+                    {
+                        ttype = TTYPE_SCALEOBJ;
+                        pixel_division = 1.0;
+                    }
+                    else if (word == "pscale")
+                    {
+                        ttype = TTYPE_SCALEOBJ;
+                        pixel_division = pixel_scale;
+                    }
+                    else
+                    {
+                        std::cout << "\tLevel load error: no valid trigger response found. Please refer to the documentation or check for typos.\n";
+                        goto finish;
+                    }
+                    break;
+                case 2:
+                    pos.x = std::stod(word) / pixel_division;
+                    break;
+                case 3:
+                    pos.y = std::stod(word) / pixel_division;
+                    break;
+                case 4:
+                    pos.z = std::stod(word) / pixel_division;
+                    break;
+                case 5:
+                    time = std::stod(word);
+                    break;
+                case 6:
+                    goto finish;
+                    break;
+                default:
+                finish:
+                    if (lastMadeWasVariable)
+                    {
+                        new_level.addTrigger(new_level.getTriggerCount() - 1, tctype, ttype, pos, time);
+                    }
+                    else
+                    {
+                        new_level.addTrigger(new_level.getObjectCount() - 1, tctype, ttype, pos, time);
+                    }
+                    making = LCOMM_NONE;
+                    step = -1;
+                    break;
+                }
+
+                ++step;
+            }
 
             if (making == LCOMM_PRIMITIVE || making == LCOMM_PRIMITIVE_PIXELPOS)
             {
@@ -141,7 +238,7 @@ void game::setup_level(const char *level_path)
                     new_level.addObject(model_type, new_position, new_scale, new_texture, new_type);
                     making = LCOMM_NONE;
                     step = -1;
-                    std::cout << model_type << " w\n";
+                    lastMadeWasVariable = false;
                     break;
                 }
 
@@ -153,14 +250,16 @@ void game::setup_level(const char *level_path)
     ++level_count;
 }
 
-void game::update(double tick_time, glm::vec3 &plPos, glm::vec3 &plVel, aabb &plCol, bool &onG)
+void game::update(double tick_time, glm::vec3 &plPos, glm::vec3 &plVel, aabb &plCol, glm::vec3 camDir, bool &onG)
 {
     if (level_count <= level_id)
     {
         std::cout << "level at index " << level_id << " does not exist.\n";
         return;
     }
-    levels[level_id].updatePhysics(tick_time, plPos, plVel, plCol, onG);
+    levels[level_id].updateTriggerChecks(plCol, plPos, camDir);
+    levels[level_id].updateTriggerPhysics(tick_time);
+    levels[level_id].updatePlayerPhysics(tick_time, plPos, plVel, plCol, onG);
 }
 void game::draw(shader &shad, double alpha)
 {
@@ -177,27 +276,11 @@ void level::addObject(model_primitive_type model_type, glm::vec3 pos, glm::vec3 
     objects.push_back({c, col, type});
     ++object_count;
 }
-void level::placeObject(glm::vec3 pos, unsigned int index)
+void level::addTrigger(unsigned int objIndex, trigger_cause_type tct, trigger_type tt, glm::vec3 pos, double time)
 {
-    if (index > object_count)
-    {
-        std::cout << "That object doesn't or shouldn't exist, there aren't that many in the scene!\n";
-        return;
-    }
-
-    objects[index].visual.Put(pos);
-    putAABB(&objects[index].collider, pos);
-}
-void level::moveObject(glm::vec3 distance, unsigned int index)
-{
-    if (index > object_count)
-    {
-        std::cout << "That object doesn't or shouldn't exist, there aren't that many in the scene!\n";
-        return;
-    }
-
-    objects[index].visual.Put(objects[index].visual.getPos() + distance);
-    putAABB(&objects[index].collider, objects[index].collider.pos + distance);
+    triggers.push_back({false, (time != 0.0), objIndex, tct, tt, pos, time});
+    objects[objIndex].visual.makeDynamic();
+    ++trigger_count;
 }
 
 void level::scaleObject(glm::vec3 scale, unsigned int index)
@@ -220,7 +303,7 @@ void level::drawLevel(shader &shad, double alpha) // please add multi-shader sup
     }
 }
 // add tick system?
-void level::updatePhysics(double tick_time, glm::vec3 &player_position, glm::vec3 &player_velocity, aabb &player_collider, bool &on_floor)
+void level::updatePlayerPhysics(double tick_time, glm::vec3 &player_position, glm::vec3 &player_velocity, aabb &player_collider, bool &on_floor)
 {
     if (object_count == 0)
     {
@@ -229,7 +312,7 @@ void level::updatePhysics(double tick_time, glm::vec3 &player_position, glm::vec
     }
     if (player_position.y < -25.0) // needs to be taken out in favor of a real looping mechanic??
     {
-        player_position = glm::vec3(0.0, 25.0, -3.0);
+        player_position = glm::vec3(0.0, 25.0, 0.0);
     }
 
     on_floor = false;
@@ -280,4 +363,69 @@ void level::updatePhysics(double tick_time, glm::vec3 &player_position, glm::vec
     player_velocity.z = 0.0;
     if (!on_floor)
         player_velocity.y += 0.5 * gravity * tick_time;
+}
+void level::updateTriggerChecks(aabb &playerCollider, glm::vec3 &camPos, glm::vec3 &camDir)
+{
+    for (int i = 0; i < trigger_count; ++i)
+    {
+        switch (triggers[i].ctype)
+        {
+        case TCAUSE_STARTGAME:
+            if (triggerGameStartedCheck)
+                break;
+            triggers[i].timerDown = triggers[i].time;
+            triggers[i].triggered = true;
+            break;
+        case TCAUSE_COLLISION:
+            if (!triggers[i].triggered && colliding(playerCollider, objects[triggers[i].objIndex].collider))
+            {
+                triggers[i].timerDown = triggers[i].time;
+                triggers[i].triggered = true;
+            }
+            break;
+        case TCAUSE_LOOKAT:
+        {
+            raycast ray = {camPos, camDir};
+            bool raycasthit = colliding(ray, objects[triggers[i].objIndex].collider);
+
+            if (raycasthit)
+            {
+                std::cout << "WHooooo!\n";
+            }
+        }
+        break;
+        default:
+            std::cout << "Trigger update check error: Undefined trigger cause type.\n";
+            triggers[i].triggered = false;
+            break;
+        }
+    }
+
+    triggerGameStartedCheck = true;
+}
+void level::updateTriggerPhysics(double tick_time)
+{
+    for (int i = 0; i < trigger_count; ++i)
+    {
+        if (!triggers[i].triggered)
+            continue;
+
+        if (triggers[i].time < 0.0 && triggers[i].timed)
+        {
+            triggers[i].triggered = false;
+        }
+
+        switch (triggers[i].type)
+        {
+        case TTYPE_MOVEOBJ:
+            objects[triggers[i].objIndex].visual.Move(triggers[i].pos * static_cast<float>(tick_time));
+            break;
+        default:
+            break;
+        }
+        if (triggers[i].timed)
+        {
+            triggers[i].time -= 1.0 * tick_time;
+        }
+    }
 }

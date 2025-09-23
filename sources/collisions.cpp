@@ -65,6 +65,54 @@ collision normal_collision(aabb *first, aabb *second, glm::vec3 vel_a, glm::vec3
     return c;
 }
 
+bool colliding(glm::vec3 point, aabb box)
+{
+    for (int i = 0; i < 3; ++i)
+    {
+        if (point[i] < box.pos[i] - (box.scale[i] * 0.5f) || point[i] > box.pos[i] + (box.scale[i] * 0.5f))
+            return false;
+    }
+    return true;
+}
+bool colliding(raycast ray, aabb box)
+{
+    double tmin = -std::numeric_limits<double>::infinity();
+    double tmax = std::numeric_limits<double>::infinity();
+
+    glm::vec3 box_min = box.pos - box.scale;
+    glm::vec3 box_max = box.pos + box.scale;
+    for (int i = 0; i < 3; ++i)
+    {
+        if (std::abs(ray.dir[i]) == 0.0)
+        {
+            if (!colliding(ray.pos, box))
+                return false;
+        }
+
+        double ood = 1.0 / ray.dir[i];
+        double t1 = (box_min[i] - ray.pos[i]) * ood;
+        double t2 = (box_max[i] - ray.pos[i]) * ood;
+
+        if (t1 > t2)
+        {
+            double ttemp = t2;
+            t2 = t1;
+            t1 = ttemp;
+        }
+
+        tmin = std::max(tmin, t1);
+        tmax = std::min(tmax, t2);
+    }
+
+    if (tmax < 0.0)
+        return false;
+    if (tmin > tmax)
+        return false;
+    // if (tmin < 0.0)
+    //     return true;
+
+    return true;
+}
 void putAABB(aabb *box, glm::vec3 new_pos)
 {
     box->pos = new_pos;

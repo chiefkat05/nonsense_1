@@ -172,7 +172,7 @@ int main()
 
             processInput(window);
 
-            mainGame.update(tick_time, cameraPos, cameraVelocity, plcol, onGround); // player movement happens here (no moving objects yet)
+            mainGame.update(tick_time, cameraPos, cameraVelocity, plcol, cameraFront, onGround); // player movement happens here (no moving objects yet)
             frame_accumulation -= tick_time;
         }
         double alpha_time = frame_accumulation / tick_time;
@@ -180,14 +180,11 @@ int main()
         glm::vec3 interpolatedCameraPos = (cameraPos * static_cast<float>(alpha_time)) + (prevCameraPos * static_cast<float>(1.0 - alpha_time));
         cameraOffset = interpolatedCameraPos + glm::vec3(0.0, 0.5, 0.0);
 
-        // cameraDirection = glm::slerp(cameraDirection, glm::quat(glm::vec3(newDir)), alpha_time);
-        // cameraFront = cameraDirection;
-        // view = glm::lookAt(cameraOffset, cameraOffset + cameraFront, up);
         glm::mat4 mCamRotation = glm::mat4(1.0);
         mCamRotation = glm::mat4_cast(cameraRotation);
 
         glm::mat4 mCamTranslate = glm::mat4(1.0);
-        mCamTranslate = glm::translate(mCamTranslate, -cameraPos); // not right I think it needs to be cameraFront?
+        mCamTranslate = glm::translate(mCamTranslate, -cameraPos);
 
         view = mCamRotation * mCamTranslate;
         shader_main.setMat4("view", view);
@@ -245,16 +242,6 @@ void mouse_callback(GLFWwindow *window, double xpos, double ypos)
 
     cameraRotation = qPitch * qYaw;
     cameraRotation = glm::normalize(cameraRotation);
-    // cameraFront = glm::normalize(cameraDirection);
-    // cameraRight = glm::normalize(glm::cross(cameraFront, up));
-
-    // cameraXZFront = glm::vec3(0.0); // problem: the commented-out code in the input function works, but it has the issue where you slow down when looking up. Please figure out and fix!
-    // cameraXZFront.x = std::cos(cameraRotation.w);
-    // cameraXZFront.z = std::sin(cameraRotation.x + cameraRotation.y + cameraRotation.z);
-    // cameraDirection = glm::dvec3(0.0);
-    // cameraDirection.x = std::cos(glm::radians(yaw));
-    // cameraDirection.z = std::sin(glm::radians(yaw));
-    // cameraXZFront = glm::normalize(cameraDirection);
 
     glfwSetCursorPos(window, 0, 0);
 
@@ -276,11 +263,14 @@ void processInput(GLFWwindow *window)
     // }
 
     glm::quat swappedRot = glm::quat(cameraRotation); // I think this could be done better but that's all I got the patience for this time
+    cameraFront = glm::vec3(0.0, 0.0, -1.0);
+    cameraFront = glm::rotate(swappedRot, cameraFront);
     swappedRot.w *= -1;
     swappedRot.x = 0.0;
     swappedRot.z = 0.0;
     swappedRot = glm::normalize(swappedRot);
-    cameraXZFront = glm::rotate(swappedRot, cameraFront);
+    cameraXZFront = glm::vec3(0.0, 0.0, -1.0);
+    cameraXZFront = glm::rotate(swappedRot, cameraXZFront);
     cameraRight = glm::cross(cameraXZFront, up);
 
     glm::vec3 moveDir = glm::vec3(0.0);

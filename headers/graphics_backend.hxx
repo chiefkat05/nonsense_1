@@ -87,9 +87,23 @@ public:
     {
         return rotation;
     }
+    inline void makeDynamic()
+    {
+        dynamic_model = true;
+    }
+    inline void makeStatic()
+    {
+        dynamic_model = false;
+    }
+    inline bool isDynamic()
+    {
+        return dynamic_model;
+    }
 
     void Put(glm::vec3 pos = glm::vec3(0.0));
     void Put(double x = 0.0, double y = 0.0, double z = 0.0);
+    void Move(glm::vec3 pos = glm::vec3(0.0));
+    void Move(double x = 0.0, double y = 0.0, double z = 0.0);
     void Scale(glm::vec3 scl = glm::vec3(1.0));
     void Scale(double x = 1.0, double y = 1.0, double z = 1.0);
     void Rotate(glm::vec3 rot = glm::vec3(0.0));
