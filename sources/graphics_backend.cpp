@@ -244,6 +244,9 @@ void model_primitive::Image(unsigned int index)
 
 void model_primitive::draw(shader &_shader, double alpha)
 {
+    if (!is_visible)
+        return;
+
     if (!dynamic_model)
     {
         static_draw(_shader);
@@ -285,6 +288,9 @@ void model_primitive::draw(shader &_shader, double alpha)
 }
 void model_primitive::static_draw(shader &_shader)
 {
+    if (!is_visible)
+        return;
+
     _shader.use();
 
     _shader.setInt("texture1", textureIndex);
@@ -309,7 +315,7 @@ void model_primitive::static_draw(shader &_shader)
     glDrawArrays(GL_TRIANGLES, 0, vertex_count);
 }
 
-model_primitive::model_primitive(model_primitive_type type, bool dyn)
+model_primitive::model_primitive(model_primitive_type type, bool dyn, bool vis)
 {
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
@@ -353,6 +359,7 @@ model_primitive::model_primitive(model_primitive_type type, bool dyn)
     glEnableVertexAttribArray(2);
 
     dynamic_model = dyn;
+    is_visible = vis;
 }
 
 void texture::Set(unsigned int index, const char *path)

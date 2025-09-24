@@ -65,7 +65,7 @@ private:
     unsigned int *textureID = nullptr;
     model_primitive_type mtype = MODEL_NONE;
     unsigned int vertex_count = 0;
-    bool dynamic_model = false, static_model_set = false;
+    bool dynamic_model = false, static_model_set = false, is_visible = true;
     glm::mat4 model = glm::mat4(1.0);
 
     glm::vec3 position = glm::vec3(0.0), scale = glm::vec3(1.0);
@@ -114,8 +114,7 @@ public:
     void draw(shader &_shader, double alpha);
     void static_draw(shader &_shader);
 
-    model_primitive(model_primitive_type type, bool dyn = false);
-    model_primitive();
+    model_primitive(model_primitive_type type, bool dyn = false, bool visible = true);
 };
 
 class texture

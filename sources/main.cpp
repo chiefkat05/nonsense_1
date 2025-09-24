@@ -244,7 +244,7 @@ void mouse_callback(GLFWwindow *window, double xpos, double ypos)
     lookDirection *= glm::angleAxis(static_cast<float>(pitch), glm::vec3(1.0, 0.0, 0.0));
     cameraFront = glm::normalize(glm::rotate(lookDirection, glm::vec3(0.0, 0.0, -1.0)));
 
-    glm::quat swappedRot = glm::normalize(glm::quat(qPitch * nqYaw));
+    glm::quat swappedRot = glm::normalize(glm::quat(nqYaw));
     cameraXZFront = glm::rotate(swappedRot, glm::vec3(0.0, 0.0, -1.0));
     cameraRight = glm::cross(cameraXZFront, up);
 

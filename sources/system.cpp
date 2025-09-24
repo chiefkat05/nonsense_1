@@ -25,10 +25,13 @@ void game::setup_level(const char *level_path)
     level_command_type making = LCOMM_NONE;
     model_primitive_type model_type = MODEL_NONE;
     int step = 0;
-    std::string word, line;
+    std::string word = "", line = "";
     double pixel_division = 1.0;
     while (std::getline(level_file, line))
     {
+        if (line[0] == '/')
+            continue;
+
         std::stringstream ss(line);
         while (std::getline(ss, word, ' '))
         {
@@ -97,12 +100,9 @@ void game::setup_level(const char *level_path)
                 }
                 if (word == "var")
                 {
-                    making = LCOMM_TRIGGER;
+                    making = LCOMM_VARIABLE;
                     continue;
                 }
-            }
-            if (making == LCOMM_VARIABLE)
-            {
             }
             if (making == LCOMM_PRIMITIVE || making == LCOMM_PRIMITIVE_PIXELPOS)
             {
@@ -110,6 +110,7 @@ void game::setup_level(const char *level_path)
                 static glm::vec3 new_scale = glm::vec3(1.0);
                 static object_type new_type = OBJ_SOLID;
                 static unsigned int new_texture = 0;
+                static bool visible = true;
 
                 switch (step)
                 {
@@ -133,27 +134,53 @@ void game::setup_level(const char *level_path)
                     break;
                 case 6:
                     new_texture = std::stoi(word);
+                    if (std::stoi(word) < 0)
+                    {
+                        new_texture = 0;
+                        visible = false;
+                    }
                     break;
                 case 7:
                     new_type = static_cast<object_type>(std::stoi(word));
 
-                    new_level.addObject(model_type, new_position, new_scale, new_texture, new_type);
+                    new_level.addObject(model_type, new_position, new_scale, new_texture, new_type, visible);
                     making = LCOMM_NONE;
                     step = -1;
+                    visible = true;
                     break;
                 }
 
                 ++step;
             }
+            if (making == LCOMM_VARIABLE)
+            {
+                static std::string sID = "";
+                static double value = 0.0;
+
+                switch (step)
+                {
+                case 0:
+                    sID = word;
+                    break;
+                case 1:
+                    value = std::stod(word);
+                    new_level.addVariable(sID, value);
+                    making = LCOMM_NONE;
+                    step = -1;
+                    break;
+                default:
+                    break;
+                }
+                ++step;
+            }
             if (making == LCOMM_TRIGGER)
             {
-                // insert data here
                 static trigger_cause_type tctype = TCAUSE_STARTGAME;
                 static trigger_type ttype = TTYPE_MOVEOBJ;
                 static glm::vec3 trigger_pos = glm::vec3(0.0);
                 static double trigger_time = 0.0;
-                static int variable_index = -1;
-                static int variable_value = 0;
+                static int variable_index = -1, variable_update_index = -1;
+                static double variable_value = 0.0, variable_update_value = 0.0;
 
                 switch (step)
                 {
@@ -201,6 +228,10 @@ void game::setup_level(const char *level_path)
                         ttype = TTYPE_SCALEOBJ;
                         pixel_division = pixel_scale;
                     }
+                    else if (word == "getvar")
+                    {
+                        step = 9; // becomes 10 before next round
+                    }
                     else
                     {
                         std::cout << "\tLevel load error: no valid trigger response found. Please refer to the documentation or check for typos.\n";
@@ -218,9 +249,9 @@ void game::setup_level(const char *level_path)
                     break;
                 case 5:
                     trigger_time = std::stod(word);
-                    break;
-                case 6:
                     goto finish;
+                    break;
+                case 6: // what even
                     break;
                 case 7:
                     variable_index = std::stoi(word);
@@ -241,21 +272,62 @@ void game::setup_level(const char *level_path)
                     else
                     {
                         std::cout << "Error: " << word << " not recognised as valid trigger variable operation. Please check your level file and fix any mistakes.\n";
+                        goto finish;
                     }
                     break;
                 case 9:
-                    variable_value = std::stoi(word);
+                    variable_value = std::stod(word);
                     step = 0; // becomes 1 before next round
                     break;
-                default:
-                finish:
-                    if (tctype != TCAUSE_VARIABLEEQUAL && tctype != TCAUSE_VARIABLEGREATER && tctype != TCAUSE_VARIABLELESSER)
+                case 10: // variable update after triggered
+                    variable_update_index = std::stoi(word);
+                    break;
+                case 11:
+                    if (word == "set")
                     {
-                        new_level.addTriggerObject(new_level.getObjectCount() - 1, tctype, ttype, trigger_pos, trigger_time);
+                        ttype = TTYPE_SETVARIABLE;
+                    }
+                    else if (word == "add")
+                    {
+                        ttype = TTYPE_ADDVARIABLE;
+                    }
+                    else if (word == "subtract")
+                    {
+                        ttype = TTYPE_SUBTRACTVARIABLE;
                     }
                     else
                     {
-                        new_level.addTriggerVariable(variable_index, variable_value, tctype, ttype, trigger_pos, trigger_time);
+                        std::cout << "Error: " << word << " not a recognised variable manipulation. Please check your level file for mistakes.\n";
+                        goto finish;
+                    }
+                    break;
+                case 12:
+                    variable_update_value = std::stod(word);
+                    step = 4; // will become 5 before next round
+                    break;
+                default:
+                finish:
+                    if (tctype == TCAUSE_VARIABLEEQUAL || tctype == TCAUSE_VARIABLEGREATER || tctype == TCAUSE_VARIABLELESSER)
+                    {
+                        if (ttype == TTYPE_SETVARIABLE || ttype == TTYPE_ADDVARIABLE || ttype == TTYPE_SUBTRACTVARIABLE)
+                        {
+                            new_level.addTriggerVariable(new_level.getObjectCount() - 1, variable_index, variable_value, tctype, ttype, variable_update_index, variable_update_value, trigger_time);
+                        }
+                        else
+                        {
+                            new_level.addTriggerVariable(new_level.getObjectCount() - 1, variable_index, variable_value, tctype, ttype, trigger_pos, trigger_time);
+                        }
+                    }
+                    else
+                    {
+                        if (ttype == TTYPE_SETVARIABLE || ttype == TTYPE_ADDVARIABLE || ttype == TTYPE_SUBTRACTVARIABLE)
+                        {
+                            new_level.addTriggerObject(new_level.getObjectCount() - 1, tctype, ttype, variable_update_index, variable_update_value, trigger_time);
+                        }
+                        else
+                        {
+                            new_level.addTriggerObject(new_level.getObjectCount() - 1, tctype, ttype, trigger_pos, trigger_time);
+                        }
                     }
                     making = LCOMM_NONE;
                     step = -1;
@@ -286,9 +358,9 @@ void game::draw(shader &shad, double alpha)
     levels[level_id].drawLevel(shad, alpha);
 }
 
-void level::addObject(model_primitive_type model_type, glm::vec3 pos, glm::vec3 scale, unsigned int texture, object_type type)
+void level::addObject(model_primitive_type model_type, glm::vec3 pos, glm::vec3 scale, unsigned int texture, object_type type, bool visible)
 {
-    model_primitive c(model_type, false);
+    model_primitive c(model_type, false, visible);
     c.Put(pos);
     c.Scale(scale);
     c.Image(texture);
@@ -298,14 +370,31 @@ void level::addObject(model_primitive_type model_type, glm::vec3 pos, glm::vec3 
 }
 void level::addTriggerObject(unsigned int objIndex, trigger_cause_type tct, trigger_type tt, glm::vec3 pos, double time)
 {
-    triggers.push_back({false, (time != 0.0), objIndex, 0, tct, tt, pos, time});
+    triggers.push_back(level_trigger(objIndex, tct, tt, pos, time));
     objects[objIndex].visual.makeDynamic();
     ++trigger_count;
 }
-void level::addTriggerVariable(unsigned int varIndex, int varValue, trigger_cause_type tct, trigger_type tt, glm::vec3 pos, double time)
+void level::addTriggerObject(unsigned int objIndex, trigger_cause_type tct, trigger_type tt, unsigned int updvariable_index, double updvariable_value, double time)
 {
-    triggers.push_back({false, (time != 0.0), varIndex, varValue, tct, tt, pos, time});
+    triggers.push_back(level_trigger(objIndex, tct, tt, updvariable_index, updvariable_value, time));
+    // objects[objIndex].visual.makeDynamic(); I don't think this is needed? since the object is not changing
     ++trigger_count;
+}
+void level::addTriggerVariable(unsigned int objIndex, unsigned int varIndex, double varValue, trigger_cause_type tct, trigger_type tt, glm::vec3 pos, double time)
+{
+    objects[objIndex].visual.makeDynamic();
+    triggers.push_back(level_trigger(objIndex, varIndex, varValue, tct, tt, pos, time));
+    ++trigger_count;
+}
+void level::addTriggerVariable(unsigned int objIndex, unsigned int varIndex, double varValue, trigger_cause_type tct, trigger_type tt, unsigned int updvariable_index, double updvariable_value, double time)
+{
+    triggers.push_back(level_trigger(objIndex, varIndex, varValue, tct, tt, updvariable_index, updvariable_value, time));
+    ++trigger_count;
+}
+void level::addVariable(std::string id, double value)
+{
+    variables.push_back({id, value});
+    ++variable_count;
 }
 
 void level::scaleObject(glm::vec3 scale, unsigned int index)
@@ -425,6 +514,35 @@ void level::updateTriggerChecks(aabb &playerCollider, glm::vec3 &camPos, glm::ve
             }
         }
         break;
+        case TCAUSE_VARIABLEEQUAL:
+            if (!triggers[i].triggered && variables[triggers[i].varCheckIndex].value == triggers[i].varValueCompare)
+            {
+                triggers[i].triggered = true;
+                triggers[i].timerDown = triggers[i].time;
+            }
+            if (variables[triggers[i].varCheckIndex].value != triggers[i].varValueCompare && triggers[i].time == 0.0)
+                triggers[i].triggered = false;
+            break;
+        case TCAUSE_VARIABLELESSER:
+            if (!triggers[i].triggered && variables[triggers[i].varCheckIndex].value < triggers[i].varValueCompare)
+            {
+                if (triggers[i].time != 0.0 || triggers[i].time == triggers[i].timerDown)
+                    triggers[i].triggered = true;
+                triggers[i].timerDown = triggers[i].time;
+            }
+            if (variables[triggers[i].varCheckIndex].value >= triggers[i].varValueCompare && triggers[i].time == 0.0)
+                triggers[i].triggered = false;
+            break;
+        case TCAUSE_VARIABLEGREATER:
+            if (!triggers[i].triggered && variables[triggers[i].varCheckIndex].value > triggers[i].varValueCompare)
+            {
+                if (triggers[i].time != 0.0 || triggers[i].time == triggers[i].timerDown)
+                    triggers[i].triggered = true;
+                triggers[i].timerDown = triggers[i].time;
+            }
+            if (variables[triggers[i].varCheckIndex].value <= triggers[i].varValueCompare && triggers[i].time == 0.0)
+                triggers[i].triggered = false;
+            break;
         default:
             std::cout << "Trigger update check error: Undefined trigger cause type.\n";
             triggers[i].triggered = false;
@@ -441,7 +559,7 @@ void level::updateTriggerPhysics(double tick_time)
         if (!triggers[i].triggered)
             continue;
 
-        if (triggers[i].time < 0.0 && triggers[i].timed)
+        if (triggers[i].timerDown < 0.0 && triggers[i].time != 0.0)
         {
             triggers[i].triggered = false;
         }
@@ -450,15 +568,41 @@ void level::updateTriggerPhysics(double tick_time)
         {
         case TTYPE_MOVEOBJ:
             objects[triggers[i].objIndex].visual.Move(triggers[i].pos * static_cast<float>(tick_time));
+            objects[triggers[i].objIndex].collider.pos = objects[triggers[i].objIndex].visual.getPos(); // the answer will blow your mind! (run this and look at the 'with value' number)
+            break;
+        case TTYPE_SCALEOBJ:
+            objects[triggers[i].objIndex].visual.Scale(triggers[i].pos * static_cast<float>(tick_time));
             objects[triggers[i].objIndex].collider.pos = objects[triggers[i].objIndex].visual.getPos();
-            // std::cout << objects[triggers[i].objIndex].visual.getPos().y << " triggered\n";
+            break;
+        case TTYPE_ROTATEOBJ:
+            std::cout << "rotating objects is not implemented yet :(\n";
+            break;
+        case TTYPE_SETVARIABLE:
+            if (triggers[i].time == triggers[i].timerDown)
+            {
+                variables[triggers[i].varUpdIndex].value = triggers[i].varUpdValue;
+                triggers[i].triggered = false;
+            }
+            break;
+        case TTYPE_ADDVARIABLE:
+            if (triggers[i].time == triggers[i].timerDown)
+            {
+                variables[triggers[i].varUpdIndex].value += triggers[i].varUpdValue;
+            }
+            break;
+        case TTYPE_SUBTRACTVARIABLE:
+            if (triggers[i].time == triggers[i].timerDown)
+                variables[triggers[i].varUpdIndex].value -= triggers[i].varUpdValue;
+            break;
+        case TTYPE_CHANGELVL: // requires game struct access?
+                              // do this one
             break;
         default:
             break;
         }
-        if (triggers[i].timed)
+        if (triggers[i].time != 0.0)
         {
-            triggers[i].time -= 1.0 * tick_time;
+            triggers[i].timerDown -= 1.0 * tick_time;
         }
     }
 }
