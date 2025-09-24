@@ -114,6 +114,7 @@ int main()
     allTextures.addTexture(1, "./img/cargo.png");
     allTextures.addTexture(2, "./img/dirt.png");
     allTextures.addTexture(3, "./img/sign.png");
+    allTextures.addTexture(4, "./img/death.png");
     aabb plcol = makeAABB(glm::vec3(0.0), glm::vec3(0.5, 1.75, 0.5));
 
     bool testbool = false;
