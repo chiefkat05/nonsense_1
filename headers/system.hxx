@@ -62,6 +62,7 @@ struct level_trigger // I think there could be a less complicated way of doing t
     trigger_type type = TTYPE_MOVEOBJ;
     glm::vec3 pos = glm::vec3(0.0);
     double time = 0.0, timerDown = 0.0;
+    std::string newLevel = "";
 
     // lmao
 
@@ -71,6 +72,8 @@ struct level_trigger // I think there could be a less complicated way of doing t
     // check-object trigger-variable
     level_trigger(unsigned int _objIndex, trigger_cause_type _ctype, trigger_type _type, unsigned int _varUpdIndex, double _varUpdValue, double _time)
         : objIndex(_objIndex), ctype(_ctype), type(_type), varUpdIndex(_varUpdIndex), varUpdValue(_varUpdValue), time(_time) {}
+    level_trigger(unsigned int _objIndex, trigger_cause_type _ctype, trigger_type _type, std::string _newLevel, double _time)
+        : objIndex(_objIndex), ctype(_ctype), type(_type), newLevel(_newLevel), time(_time) {}
 
     // check-variable trigger-object
     level_trigger(unsigned int _objIndex, unsigned int _varIndex, double _varValue, trigger_cause_type _ctype, trigger_type _type, glm::vec3 _pos, double _time)
@@ -78,6 +81,8 @@ struct level_trigger // I think there could be a less complicated way of doing t
     // check-variable trigger-variable (incomplete)
     level_trigger(unsigned int _objIndex, unsigned int _varIndex, double _varValue, trigger_cause_type _ctype, trigger_type _type, unsigned int _varUpdIndex, double _varUpdValue, double _time)
         : objIndex(_objIndex), varCheckIndex(_varIndex), varValueCompare(_varValue), ctype(_ctype), type(_type), varUpdIndex(_varUpdIndex), varUpdValue(_varUpdValue), time(_time) {}
+    level_trigger(unsigned int _objIndex, unsigned int _varIndex, double _varValue, trigger_cause_type _ctype, trigger_type _type, std::string _newLevel, double _time)
+        : objIndex(_objIndex), varCheckIndex(_varIndex), varValueCompare(_varValue), ctype(_ctype), type(_type), newLevel(_newLevel), time(_time) {}
 };
 
 struct level_variable
@@ -100,6 +105,8 @@ private:
     double gravity = -9.81;
 
 public:
+    std::string setLevel = "";
+
     inline unsigned int getObjectCount()
     {
         return object_count;
@@ -120,9 +127,11 @@ public:
     void addObject(model_primitive_type model_type, glm::vec3 pos, glm::vec3 scale, unsigned int texture, object_type type, bool visible = true);
     void addTriggerObject(unsigned int objIndex, trigger_cause_type tct, trigger_type tt, glm::vec3 pos, double time);
     void addTriggerObject(unsigned int objIndex, trigger_cause_type tct, trigger_type tt, unsigned int updvariable_index, double updvariable_value, double time);
+    void addTriggerObject(unsigned int objIndex, trigger_cause_type tct, trigger_type tt, std::string trigger_set_level, double time);
     void addVariable(std::string id, double value);
     void addTriggerVariable(unsigned int objIndex, unsigned int varIndex, double varValue, trigger_cause_type tct, trigger_type tt, glm::vec3 pos, double time);
     void addTriggerVariable(unsigned int objIndex, unsigned int varIndex, double varValue, trigger_cause_type tct, trigger_type tt, unsigned int updvariable_index, double updvariable_value, double time);
+    void addTriggerVariable(unsigned int objIndex, unsigned int varIndex, double varValue, trigger_cause_type tct, trigger_type tt, std::string trigger_set_level, double time);
 
     void scaleObject(glm::vec3 scale, unsigned int index);
 
@@ -135,12 +144,9 @@ public:
 class game
 {
 private:
-    unsigned int level_id = 0;
-    std::vector<level> levels;
-    unsigned int level_count = 0;
+    level current_level;
 
 public:
-    void goto_level(unsigned int id);
     void setup_level(const char *level_path);
 
     void update(double tick_time, glm::vec3 &plPos, glm::vec3 &plLastPos, glm::vec3 &plVel, aabb &plCol, glm::vec3 camDir, bool &onG);

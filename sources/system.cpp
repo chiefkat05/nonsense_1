@@ -1,18 +1,15 @@
 #include "../headers/system.hxx"
 
 extern float pixel_scale;
+extern const glm::vec3 spawnLocation;
 
-void game::goto_level(unsigned int id)
-{
-    level_id = id;
-}
 void game::setup_level(const char *level_path)
 {
-    if (level_count >= level_cap)
-    {
-        std::cout << "Level count is over level cap! Please increase the level limit or delete a different level to make room.\n";
-        return;
-    }
+    // if (level_count >= level_cap)
+    // {
+    //     std::cout << "Level count is over level cap! Please increase the level limit or delete a different level to make room.\n";
+    //     return;
+    // }
     level new_level;
 
     std::ifstream level_file(level_path);
@@ -181,6 +178,7 @@ void game::setup_level(const char *level_path)
                 static double trigger_time = 0.0;
                 static int variable_index = -1, variable_update_index = -1;
                 static double variable_value = 0.0, variable_update_value = 0.0;
+                std::string trigger_set_level = level_path;
 
                 switch (step)
                 {
@@ -231,6 +229,11 @@ void game::setup_level(const char *level_path)
                     else if (word == "getvar")
                     {
                         step = 9; // becomes 10 before next round
+                    }
+                    else if (word == "setlevel")
+                    {
+                        ttype = TTYPE_CHANGELVL;
+                        step = 12; // becomes 13 before next round
                     }
                     else
                     {
@@ -325,11 +328,19 @@ void game::setup_level(const char *level_path)
                     variable_update_value = std::stod(word);
                     step = 4; // will become 5 before next round
                     break;
+                case 13:
+                    trigger_set_level = word;
+                    step = 4; // becomes 5 before next round
+                    break;
                 default:
                 finish:
                     if (tctype == TCAUSE_VARIABLEEQUAL || tctype == TCAUSE_VARIABLEGREATER || tctype == TCAUSE_VARIABLELESSER)
                     {
-                        if (ttype == TTYPE_SETVARIABLE || ttype == TTYPE_ADDVARIABLE || ttype == TTYPE_SUBTRACTVARIABLE)
+                        if (ttype == TTYPE_CHANGELVL)
+                        {
+                            new_level.addTriggerVariable(new_level.getObjectCount() - 1, variable_index, variable_value, tctype, ttype, trigger_set_level, trigger_time);
+                        }
+                        else if (ttype == TTYPE_SETVARIABLE || ttype == TTYPE_ADDVARIABLE || ttype == TTYPE_SUBTRACTVARIABLE)
                         {
                             new_level.addTriggerVariable(new_level.getObjectCount() - 1, variable_index, variable_value, tctype, ttype, variable_update_index, variable_update_value, trigger_time);
                         }
@@ -340,7 +351,11 @@ void game::setup_level(const char *level_path)
                     }
                     else
                     {
-                        if (ttype == TTYPE_SETVARIABLE || ttype == TTYPE_ADDVARIABLE || ttype == TTYPE_SUBTRACTVARIABLE)
+                        if (ttype == TTYPE_CHANGELVL)
+                        {
+                            new_level.addTriggerObject(new_level.getObjectCount() - 1, tctype, ttype, trigger_set_level, trigger_time);
+                        }
+                        else if (ttype == TTYPE_SETVARIABLE || ttype == TTYPE_ADDVARIABLE || ttype == TTYPE_SUBTRACTVARIABLE)
                         {
                             new_level.addTriggerObject(new_level.getObjectCount() - 1, tctype, ttype, variable_update_index, variable_update_value, trigger_time);
                         }
@@ -358,24 +373,31 @@ void game::setup_level(const char *level_path)
             }
         }
     }
-    levels.push_back(new_level);
-    ++level_count;
+    // levels.push_back(new_level);
+    // ++level_count;
+    current_level = new_level;
 }
 
 void game::update(double tick_time, glm::vec3 &plPos, glm::vec3 &plLastPos, glm::vec3 &plVel, aabb &plCol, glm::vec3 camDir, bool &onG)
 {
-    if (level_count <= level_id)
+    // if (level_count <= level_id)
+    // {
+    //     std::cout << "level at index " << level_id << " does not exist.\n";
+    //     return;
+    // }
+    if (current_level.setLevel != "")
     {
-        std::cout << "level at index " << level_id << " does not exist.\n";
+        setup_level(current_level.setLevel.c_str());
+        plPos = spawnLocation;
         return;
     }
-    levels[level_id].updateTriggerChecks(plCol, plPos, camDir);
-    levels[level_id].updateTriggerPhysics(tick_time);
-    levels[level_id].updatePlayerPhysics(tick_time, plPos, plLastPos, plVel, plCol, onG);
+    current_level.updateTriggerChecks(plCol, plPos, camDir);
+    current_level.updateTriggerPhysics(tick_time);
+    current_level.updatePlayerPhysics(tick_time, plPos, plLastPos, plVel, plCol, onG);
 }
 void game::draw(shader &shad, double alpha)
 {
-    levels[level_id].drawLevel(shad, alpha);
+    current_level.drawLevel(shad, alpha);
 }
 
 void level::addObject(model_primitive_type model_type, glm::vec3 pos, glm::vec3 scale, unsigned int texture, object_type type, bool visible)
@@ -401,6 +423,12 @@ void level::addTriggerObject(unsigned int objIndex, trigger_cause_type tct, trig
     // objects[objIndex].visual.makeDynamic(); I don't think this is needed? since the object is not changing
     ++trigger_count;
 }
+void level::addTriggerObject(unsigned int objIndex, trigger_cause_type tct, trigger_type tt, std::string trigger_set_level, double time)
+{
+    triggers.push_back(level_trigger(objIndex, tct, tt, trigger_set_level, time));
+    // objects[objIndex].visual.makeDynamic(); I don't think this is needed? since the object is not changing
+    ++trigger_count;
+}
 void level::addTriggerVariable(unsigned int objIndex, unsigned int varIndex, double varValue, trigger_cause_type tct, trigger_type tt, glm::vec3 pos, double time)
 {
     objects[objIndex].visual.makeDynamic();
@@ -410,6 +438,11 @@ void level::addTriggerVariable(unsigned int objIndex, unsigned int varIndex, dou
 void level::addTriggerVariable(unsigned int objIndex, unsigned int varIndex, double varValue, trigger_cause_type tct, trigger_type tt, unsigned int updvariable_index, double updvariable_value, double time)
 {
     triggers.push_back(level_trigger(objIndex, varIndex, varValue, tct, tt, updvariable_index, updvariable_value, time));
+    ++trigger_count;
+}
+void level::addTriggerVariable(unsigned int objIndex, unsigned int varIndex, double varValue, trigger_cause_type tct, trigger_type tt, std::string trigger_set_level, double time)
+{
+    triggers.push_back(level_trigger(objIndex, varIndex, varValue, tct, tt, trigger_set_level, time));
     ++trigger_count;
 }
 void level::addVariable(std::string id, double value)
@@ -624,6 +657,11 @@ void level::updateTriggerPhysics(double tick_time)
             break;
         case TTYPE_CHANGELVL: // requires game struct access?
                               // do this one
+            if (triggers[i].time == triggers[i].timerDown && !triggers[i].triggered || triggers[i].time == 0.0)
+            {
+                setLevel = triggers[i].newLevel;
+                triggers[i].triggered = false;
+            }
             break;
         default:
             break;

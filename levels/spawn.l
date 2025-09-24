@@ -30,6 +30,7 @@ trigger touch pscale 0 200 0 1.0
 
 // level reload test
 cube -15.0 0.0 15.0 1.0 1.0 1.0 4 0
+trigger touch setlevel ./levels/spawn.l 0.0
 
 //pyramid test
 pyramid 2.0 1.0 0.0 1.0 1.0 1.0 0 1

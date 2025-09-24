@@ -24,6 +24,7 @@
 const unsigned int window_width = 640;
 const unsigned int window_height = 420;
 const double tick_time = 0.01;
+extern const glm::vec3 spawnLocation = glm::vec3(0.0, 0.0, 3.0);
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 void mouse_callback(GLFWwindow *window, double xpos, double ypos);
@@ -32,7 +33,7 @@ void processInput(GLFWwindow *window);
 
 double delta_time = 0.0,
        lastTime = 0.0, currentTime = 0.0;
-glm::vec3 cameraPos = glm::vec3(0.0, 0.0, 3.0);
+glm::vec3 cameraPos = spawnLocation;
 glm::vec3 cameraOffset = glm::vec3(0.0, 0.5, 0.0);
 glm::vec3 cameraFront = glm::vec3(0.0, 0.0, -1.0);
 glm::vec3 cameraXZFront = glm::vec3(0.0, 0.0, -1.0);
@@ -143,7 +144,6 @@ int main()
     ma_sound_start(&music);
 
     mainGame.setup_level("./levels/spawn.l");
-    mainGame.goto_level(0);
 
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glfwSetWindowFocusCallback(window, window_focus_callback);
