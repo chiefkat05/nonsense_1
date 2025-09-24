@@ -112,6 +112,10 @@ public:
     {
         return variable_count;
     }
+    inline level_variable *getVariableAtIndex(unsigned int index)
+    {
+        return &variables[index];
+    }
 
     void addObject(model_primitive_type model_type, glm::vec3 pos, glm::vec3 scale, unsigned int texture, object_type type, bool visible = true);
     void addTriggerObject(unsigned int objIndex, trigger_cause_type tct, trigger_type tt, glm::vec3 pos, double time);
@@ -123,7 +127,7 @@ public:
     void scaleObject(glm::vec3 scale, unsigned int index);
 
     void drawLevel(shader &shad, double alpha);
-    void updatePlayerPhysics(double tick_time, glm::vec3 &player_position, glm::vec3 &player_velocity, aabb &player_collider, bool &on_floor);
+    void updatePlayerPhysics(double tick_time, glm::vec3 &player_position, glm::vec3 &player_last_position, glm::vec3 &player_velocity, aabb &player_collider, bool &on_floor);
     void updateTriggerChecks(aabb &playerCollider, glm::vec3 &camPos, glm::vec3 &camDir);
     void updateTriggerPhysics(double tick_time);
 };
@@ -139,7 +143,7 @@ public:
     void goto_level(unsigned int id);
     void setup_level(const char *level_path);
 
-    void update(double tick_time, glm::vec3 &plPos, glm::vec3 &plVel, aabb &plCol, glm::vec3 camDir, bool &onG);
+    void update(double tick_time, glm::vec3 &plPos, glm::vec3 &plLastPos, glm::vec3 &plVel, aabb &plCol, glm::vec3 camDir, bool &onG);
     void draw(shader &shad, double alpha);
 };
 

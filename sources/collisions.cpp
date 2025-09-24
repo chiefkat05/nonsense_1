@@ -24,9 +24,7 @@ collision normal_collision(aabb *first, aabb *second, glm::vec3 vel_a, glm::vec3
 {
     collision c;
     c.hitLocation = first->pos;
-    aabb boundingA = makeAABB(first->pos + vel_a * 0.5f, first->scale + glm::vec3(std::abs(vel_a.x), std::abs(vel_a.y), std::abs(vel_a.z)));
-    aabb boundingB = makeAABB(second->pos + vel_b * 0.5f, second->scale + glm::vec3(std::abs(vel_b.x), std::abs(vel_b.y), std::abs(vel_b.z)));
-    if (!colliding(boundingA, boundingB))
+    if (!colliding(*first, *second))
     {
         c.hit = false;
         return c;

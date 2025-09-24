@@ -197,7 +197,7 @@ void game::setup_level(const char *level_path)
                     {
                         tctype = TCAUSE_LOOKAT;
                     }
-                    else if (word == "var")
+                    else if (word == "is")
                     {
                         step = 6; // becomes 7 before next round
                     }
@@ -254,10 +254,20 @@ void game::setup_level(const char *level_path)
                 case 6: // what even
                     break;
                 case 7:
-                    variable_index = std::stoi(word);
+                    for (int i = 0; i < new_level.getVariableCount(); ++i)
+                    {
+                        if (word != new_level.getVariableAtIndex(i)->strID)
+                            continue;
+                        variable_index = i;
+                    }
+                    if (variable_index == -1)
+                    {
+                        std::cout << "Variable trigger check error: variable " << word << " not found. Please re-check the names of existing variables in your level file and use one of those or make a new one.\n";
+                        goto finish;
+                    }
                     break;
                 case 8:
-                    if (word == "equals")
+                    if (word == "equalto")
                     {
                         tctype = TCAUSE_VARIABLEEQUAL;
                     }
@@ -271,7 +281,7 @@ void game::setup_level(const char *level_path)
                     }
                     else
                     {
-                        std::cout << "Error: " << word << " not recognised as valid trigger variable operation. Please check your level file and fix any mistakes.\n";
+                        std::cout << "Variable trigger update error: " << word << " not recognised as valid trigger variable operation. Please check your level file and fix any mistakes.\n";
                         goto finish;
                     }
                     break;
@@ -280,7 +290,17 @@ void game::setup_level(const char *level_path)
                     step = 0; // becomes 1 before next round
                     break;
                 case 10: // variable update after triggered
-                    variable_update_index = std::stoi(word);
+                    for (int i = 0; i < new_level.getVariableCount(); ++i)
+                    {
+                        if (word != new_level.getVariableAtIndex(i)->strID)
+                            continue;
+                        variable_update_index = i;
+                    }
+                    if (variable_update_index == -1)
+                    {
+                        std::cout << "Error: variable " << word << " not found. Please re-check the names of existing variables in your level file and use one of those or make a new one.\n";
+                        goto finish;
+                    }
                     break;
                 case 11:
                     if (word == "set")
@@ -342,7 +362,7 @@ void game::setup_level(const char *level_path)
     ++level_count;
 }
 
-void game::update(double tick_time, glm::vec3 &plPos, glm::vec3 &plVel, aabb &plCol, glm::vec3 camDir, bool &onG)
+void game::update(double tick_time, glm::vec3 &plPos, glm::vec3 &plLastPos, glm::vec3 &plVel, aabb &plCol, glm::vec3 camDir, bool &onG)
 {
     if (level_count <= level_id)
     {
@@ -351,7 +371,7 @@ void game::update(double tick_time, glm::vec3 &plPos, glm::vec3 &plVel, aabb &pl
     }
     levels[level_id].updateTriggerChecks(plCol, plPos, camDir);
     levels[level_id].updateTriggerPhysics(tick_time);
-    levels[level_id].updatePlayerPhysics(tick_time, plPos, plVel, plCol, onG);
+    levels[level_id].updatePlayerPhysics(tick_time, plPos, plLastPos, plVel, plCol, onG);
 }
 void game::draw(shader &shad, double alpha)
 {
@@ -362,6 +382,7 @@ void level::addObject(model_primitive_type model_type, glm::vec3 pos, glm::vec3 
 {
     model_primitive c(model_type, false, visible);
     c.Put(pos);
+    c.Put(pos); // second call to set last_position as well
     c.Scale(scale);
     c.Image(texture);
     aabb col = makeAABB(pos, scale);
@@ -417,7 +438,7 @@ void level::drawLevel(shader &shad, double alpha) // please add multi-shader sup
     }
 }
 
-void level::updatePlayerPhysics(double tick_time, glm::vec3 &player_position, glm::vec3 &player_velocity, aabb &player_collider, bool &on_floor)
+void level::updatePlayerPhysics(double tick_time, glm::vec3 &player_position, glm::vec3 &player_last_position, glm::vec3 &player_velocity, aabb &player_collider, bool &on_floor)
 {
     if (object_count == 0)
     {
@@ -431,19 +452,25 @@ void level::updatePlayerPhysics(double tick_time, glm::vec3 &player_position, gl
 
     on_floor = false;
 
-    putAABB(&player_collider, player_position);
+    putAABB(&player_collider, player_position + player_velocity * (float)tick_time); // future collision
     for (int i = 0; i < objects.size(); ++i)
     {
         if (objects[i].type == OBJ_PASSTHROUGH)
             continue;
 
-        // putAABB(&objects[i].collider, objects[i].visual.getPos());
         objects[i].collider.pos = objects[i].visual.getPos();
         objects[i].collider.scale = objects[i].visual.getScale();
-        collision col = normal_collision(&player_collider, &objects[i].collider, player_velocity * static_cast<float>(tick_time), glm::vec3(0.0));
+        collision col = normal_collision(&player_collider, &objects[i].collider, player_velocity * static_cast<float>(tick_time),
+                                         (objects[i].visual.getPos() - objects[i].visual.getLastPosition()) * static_cast<float>(tick_time));
         if (col.hit)
         {
-            player_position = col.hitLocation;
+            for (int i = 0; i < 3; ++i)
+            {
+                if (col.hitLocation[i] != player_collider.pos[i])
+                {
+                    player_position[i] = col.hitLocation[i];
+                }
+            }
             putAABB(&player_collider, player_position);
             for (int j = 0; j < 3; ++j)
             {
@@ -454,6 +481,7 @@ void level::updatePlayerPhysics(double tick_time, glm::vec3 &player_position, gl
                     //     ma_sound_start(&landsfx);
                     // }
                     on_floor = true;
+                    player_position += (objects[i].visual.getPos() - objects[i].visual.getLastPosition());
                 }
                 if (col.normal[j] < 0 && player_velocity[j] > 0.0)
                 {
@@ -470,8 +498,8 @@ void level::updatePlayerPhysics(double tick_time, glm::vec3 &player_position, gl
     if (!on_floor)
         player_velocity.y += 0.5 * gravity * tick_time;
 
-    player_position.y += player_velocity.y * tick_time;
     player_position.x += player_velocity.x * tick_time;
+    player_position.y += player_velocity.y * tick_time;
     player_position.z += player_velocity.z * tick_time;
 
     player_velocity.x = 0.0;
@@ -568,11 +596,11 @@ void level::updateTriggerPhysics(double tick_time)
         {
         case TTYPE_MOVEOBJ:
             objects[triggers[i].objIndex].visual.Move(triggers[i].pos * static_cast<float>(tick_time));
-            objects[triggers[i].objIndex].collider.pos = objects[triggers[i].objIndex].visual.getPos(); // the answer will blow your mind! (run this and look at the 'with value' number)
+            objects[triggers[i].objIndex].collider.pos = objects[triggers[i].objIndex].visual.getPos();
             break;
         case TTYPE_SCALEOBJ:
-            objects[triggers[i].objIndex].visual.Scale(triggers[i].pos * static_cast<float>(tick_time));
-            objects[triggers[i].objIndex].collider.pos = objects[triggers[i].objIndex].visual.getPos();
+            objects[triggers[i].objIndex].visual.Scale(objects[triggers[i].objIndex].visual.getScale() + triggers[i].pos * static_cast<float>(tick_time));
+            objects[triggers[i].objIndex].collider.scale = objects[triggers[i].objIndex].visual.getScale();
             break;
         case TTYPE_ROTATEOBJ:
             std::cout << "rotating objects is not implemented yet :(\n";

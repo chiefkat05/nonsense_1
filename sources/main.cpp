@@ -40,7 +40,7 @@ glm::vec3 up = glm::vec3(0.0, 1.0, 0.0);
 glm::vec3 cameraRight = glm::vec3(0.0);
 glm::quat cameraRotation = glm::quat(glm::vec3(0.0));
 glm::vec3 cameraVelocity = glm::vec3(0.0);
-const double CAMERA_SPEED = 4.0;
+const double CAMERA_SPEED = 6.0;
 
 double pitch = 0.0, yaw = -90.0;
 double cameraFloor = 0.0;
@@ -95,7 +95,7 @@ int main()
 #endif
 
     glEnable(GL_DEPTH_TEST);
-    // glEnable(GL_CULL_FACE);
+    // glEnable(GL_CULL_FACE); // need to re-do vertices for models to make this work properly
     // glCullFace(GL_BACK);
     // glFrontFace(GL_CCW);
     graphics_init();
@@ -172,7 +172,7 @@ int main()
 
             processInput(window);
 
-            mainGame.update(tick_time, cameraPos, cameraVelocity, plcol, cameraFront, onGround);
+            mainGame.update(tick_time, cameraPos, prevCameraPos, cameraVelocity, plcol, cameraFront, onGround); // also try cameraPos + cameraVel and cameraPos
             frame_accumulation -= tick_time;
         }
         double alpha_time = frame_accumulation / tick_time;

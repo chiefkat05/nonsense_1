@@ -6,21 +6,27 @@
 //pcube and set the scale to '12 8 2' or something similar as you can see below.
 
 var num 0
-trigger var 0 greaterthan 0.0 getvar 0 set 0.0 0.0
-trigger var 0 lessthan 0.0 getvar 0 set 0.0 0.0
+trigger is num greaterthan 0.0 getvar num set 0.0 0.0
+trigger is num lessthan 0.0 getvar num set 0.0 0.0
 
 var gateopen 0
 
 //quad test
 quad -4.0 1.5 -0.5 1.0 1.0 1.0 0 1
-trigger var 0 equals 1.0 move 1.0 0.0 0.0 0.01
-trigger var 0 equals -1.0 move -1.0 0.0 0.0 0.01
+trigger is num equalto 1.0 move 1.0 0.0 0.0 0.01
+trigger is num equalto -1.0 move -1.0 0.0 0.0 0.01
+
+//floor test
+cube 0.0 1.5 -4.0 1.0 4.0 0.001 0 0
 
 quad -5.0 1.0 0.0 0.5 0.5 0.5 1 1
-trigger seen getvar 0 set -1 0.0
+trigger seen getvar num set -1 0.0
 quad -3.0 1.0 0.0 0.5 0.5 0.5 1 1
-trigger seen getvar 0 set 1 0.0
+trigger seen getvar num set 1 0.0
 
+// pmove test
+cube -4.0 -0.5 -4.0 1.0 1.0 1.0 1 0
+trigger touch pscale 0 200 0 1.0
 
 //pyramid test
 pyramid 2.0 1.0 0.0 1.0 1.0 1.0 0 1
@@ -37,8 +43,8 @@ cube 0.0 -1.5 0.0 400.0 0.25 400.0 2 1
 cube -19.5 0.5 0.0 1.0 2.0 40.0 1 0
 cube 19.5 0.5 0.0 1.0 2.0 40.0 1 0
 cube 0.0 0.5 -19.5 40.0 2.0 1.0 1 0
-trigger var 1 equals 1.0 move 0.0 -0.5 0.0 2.5
-trigger var 1 equals 1.0 getvar 1 add 1.0 0.0
+trigger is gateopen equalto 1.0 move 0.0 -0.5 0.0 2.5
+trigger is gateopen equalto 1.0 getvar gateopen add 1.0 0.0
 cube 0.0 0.5 19.5 40.0 2.0 1.0 1 0
 
 //pillar
@@ -62,7 +68,7 @@ pcube 144 -4 0 16 8 32 2 0
 
 //second area gate button
 cube 2.0 -0.5 -17.0 0.5 0.5 0.5 0 0
-trigger touch getvar 1 add 1.0 0.0
+trigger touch getvar gateopen add 1.0 0.0
 
 //second area
 cube 0.0 0.5 -40.0 40.0 1.0 40.0 0 0
@@ -87,16 +93,16 @@ var elevator 0.0
 
 //elevator hitbox
 cube 0.0 1.0 -50.0 10.0 0.5 10.0 -1 1
-trigger touch getvar 2 set 1.0 0.0
+trigger touch getvar elevator set 1.0 0.0
 
 //elevator
 cube 0.0 -2.0 -50.0 10.0 3.0 10.0 1 0
 //go up when player detected
-trigger var 2 equals 1.0 move 0.0 10.0 0.0 5.0
-trigger var 2 greaterthan 0.0 getvar 2 add 1.0 0.0
+trigger is elevator equalto 1.0 move 0.0 10.0 0.0 5.0
+trigger is elevator greaterthan 0.0 getvar elevator add 1.0 0.0
 //go back down after a moment
-trigger var 2 greaterthan 800.0 move 0.0 -10.0 0.0 5.0
-trigger var 2 greaterthan 800.0 getvar 2 set 0.0 0.0
+trigger is elevator greaterthan 800.0 move 0.0 -10.0 0.0 5.0
+trigger is elevator greaterthan 800.0 getvar elevator set 0.0 0.0
 
 //sky 'box'
 cube 0.0 49.5 -39.5 10.0 1.0 10.0 0 0
