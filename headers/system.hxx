@@ -159,10 +159,10 @@ public:
     }
 
     void addObject(model_primitive_type model_type, glm::vec3 pos, glm::vec3 scale, unsigned int texture, object_type type, bool visible = true);
-    // void addTriggerObject(unsigned int objIndex, trigger_cause_type tct, trigger_type tt, glm::vec3 pos, double time);
-    // void addTriggerObject(unsigned int objIndex, trigger_cause_type tct, trigger_type tt, unsigned int updvariable_index, double updvariable_value, double time);
-    // void addTriggerObject(unsigned int objIndex, trigger_cause_type tct, trigger_type tt, std::string trigger_set_level, double time);
-    // void addTriggerObject(unsigned int objIndex, trigger_cause_type tct, trigger_type tt, std::string audio_id, double time);
+    void addVariable(std::string id, double value);
+    void addUIObject(glm::vec2 pos, glm::vec2 scale, unsigned int texture);
+    void addAudio(std::string id, std::string path);
+
     void addTriggerObjectCheck(unsigned int objIndex, trigger_cause_type tct, trigger_type tt);
     void addTriggerVariableCheck(unsigned int varIndex, double varValue, trigger_cause_type tct, trigger_type tt);
     void addTriggerUICheck(unsigned int uiIndex, trigger_cause_type tct, trigger_type tt);
@@ -171,18 +171,6 @@ public:
     void setTriggerVariableResponse(unsigned int varUpdIndex, double varUpdValue, double time);
     void setTriggerAudioResponse(std::string audioID, double time);
     void setTriggerLevelResponse(std::string newLevel, double time);
-
-    void addVariable(std::string id, double value);
-    // void addTriggerVariable(unsigned int objIndex, unsigned int varIndex, double varValue, trigger_cause_type tct, trigger_type tt, glm::vec3 pos, double time);
-    // void addTriggerVariable(unsigned int varIndex, double varValue, trigger_cause_type tct, trigger_type tt, unsigned int updvariable_index, double updvariable_value, double time);
-    // void addTriggerVariable(unsigned int varIndex, double varValue, trigger_cause_type tct, trigger_type tt, std::string trigger_set_level, double time);
-
-    void addUIObject(glm::vec2 pos, glm::vec2 scale, unsigned int texture);
-    // void addTriggerUI(unsigned int uiIndex, unsigned int objIndex, trigger_cause_type tct, trigger_type tt, glm::vec3 pos, double time);
-    // void addTriggerUI(unsigned int uiIndex, trigger_cause_type tct, trigger_type tt, unsigned int updvariable_index, double updvariable_value, double time);
-    // void addTriggerUI(unsigned int uiIndex, trigger_cause_type tct, trigger_type tt, std::string trigger_set_level, double time);
-
-    void scaleObject(glm::vec3 scale, unsigned int index);
 
     void reset();
     void drawLevel(shader &shad, shader &shad_ui, double alpha);

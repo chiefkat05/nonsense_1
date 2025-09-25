@@ -43,12 +43,27 @@ public:
     }
     void play_audio(std::string id)
     {
+        if (ma_sound_is_playing(&sounds[id]))
+            return;
+
+        ma_sound_start(&sounds[id]);
+    }
+    void force_play_audio(std::string id)
+    {
         ma_sound_seek_to_pcm_frame(&sounds[id], 0);
         ma_sound_start(&sounds[id]);
     }
     void stop_audio(std::string id)
     {
         ma_sound_stop(&sounds[id]);
+    }
+    void set_fade_in(std::string id, double time)
+    {
+        ma_sound_set_fade_in_milliseconds(&sounds[id], 0.0, 1.0, (ma_uint64)(time * 10000));
+    }
+    void set_fade_out(std::string id, double time)
+    {
+        ma_sound_set_fade_in_milliseconds(&sounds[id], 1.0, 0.0, (ma_uint64)(time * 10000));
     }
 
     void loop(std::string id, double offset)

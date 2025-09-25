@@ -5,6 +5,10 @@
 //each texture is 16 pixels tall and wide, and the sign is 12 pixels wide and 8 pixels tall. so if you make a sign, the best thing you can do is make it a
 //pcube and set the scale to '12 8 2' or something similar as you can see below.
 
+sound music2 ./snd/weary.mp3
+trigger start playsound music2 0.0
+trigger start fadeinsound music2 0.1
+
 var num 0
 trigger is num greaterthan 0.0 getvar num set 0.0 0.0
 trigger is num lessthan 0.0 getvar num set 0.0 0.0
@@ -43,12 +47,14 @@ cube 0.0 -1.0 0.0 40.0 1.0 40.0 2 0
 //outside floor
 cube 0.0 -1.5 0.0 400.0 0.25 400.0 2 0
 
+sound gatesound ./snd/step.wav
 //walls
 cube -19.5 0.5 0.0 1.0 2.0 40.0 1 0
 cube 19.5 0.5 0.0 1.0 2.0 40.0 1 0
 cube 0.0 0.5 -19.5 40.0 2.0 1.0 1 0
 trigger is gateopen equalto 1.0 move 0.0 -0.5 0.0 2.5
 trigger is gateopen equalto 1.0 getvar gateopen add 1.0 0.0
+trigger is gateopen equalto 1.0 playsound gatesound 0.0
 cube 0.0 0.5 19.5 40.0 2.0 1.0 1 0
 
 //pillar

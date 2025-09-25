@@ -124,12 +124,6 @@ int main()
 
     bool testbool = false;
 
-    audio_player_struct *audio_player = audio_player_struct::getInstance();
-
-    audio_player->load_audio("music", "./snd/yippe.mp3");
-    // ma_sound_start(&music);
-    audio_player->play_audio("music");
-
     mainGame.setup_level("./levels/menu.l");
 
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
@@ -141,8 +135,6 @@ int main()
 
     loop = [&]
     {
-        audio_player->loop("music", 0.05);
-
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glClearColor(0.4, 0.6, 0.9, 1.0);
 

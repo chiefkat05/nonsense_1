@@ -9,10 +9,6 @@ extern const unsigned int window_height;
 
 void game::setup_level(const char *level_path)
 {
-    audio_player_struct *audio_player = audio_player_struct::getInstance();
-    audio_player->load_audio("test", "./snd/land.wav");
-    audio_player->play_audio("test");
-
     level new_level;
 
     std::ifstream level_file(level_path);
@@ -113,6 +109,28 @@ void game::setup_level(const char *level_path)
                     making = LCOMM_UI_OBJECT;
                     continue;
                 }
+                if (word == "sound")
+                {
+                    making = LCOMM_AUDIO;
+                    continue;
+                }
+            }
+            if (making == LCOMM_AUDIO)
+            {
+                static std::string id = "", path = "";
+                switch (step)
+                {
+                case 0:
+                    id = word;
+                    break;
+                case 1:
+                    path = word;
+                    new_level.addAudio(id, path);
+                    step = -1;
+                    making = LCOMM_NONE;
+                    break;
+                }
+                ++step;
             }
             if (making == LCOMM_UI_OBJECT)
             {
@@ -289,6 +307,26 @@ void game::setup_level(const char *level_path)
                         ttype = TTYPE_CHANGELVL;
                         step = 12; // becomes 13 before next round
                     }
+                    else if (word == "playsound")
+                    {
+                        ttype = TTYPE_PLAYSOUND;
+                        step = 5; // becomes 6 before next round
+                    }
+                    else if (word == "stopsound")
+                    {
+                        ttype = TTYPE_STOPSOUND;
+                        step = 5; // becomes 6 before next round
+                    }
+                    else if (word == "fadeinsound")
+                    {
+                        ttype = TTYPE_FADEINSOUND;
+                        step = 5; // becomes 6 before next round
+                    }
+                    else if (word == "fadeoutsound")
+                    {
+                        ttype = TTYPE_FADEOUTSOUND;
+                        step = 5; // becomes 6 before next round
+                    }
                     else
                     {
                         std::cout << "\tLevel load error: no valid trigger response found. Please refer to the documentation or check for typos.\n";
@@ -308,7 +346,9 @@ void game::setup_level(const char *level_path)
                     trigger_time = std::stod(word);
                     goto finish;
                     break;
-                case 6: // what even
+                case 6:
+                    trigger_audio_id = word;
+                    step = 4; // becomes 5 before next round
                     break;
                 case 7:
                     for (int i = 0; i < new_level.getVariableCount(); ++i)
@@ -433,51 +473,6 @@ void game::setup_level(const char *level_path)
                     default:
                         break;
                     }
-                    // if (tctype == TCAUSE_VARIABLEEQUAL || tctype == TCAUSE_VARIABLEGREATER || tctype == TCAUSE_VARIABLELESSER)
-                    // {
-                    //     if (ttype == TTYPE_CHANGELVL)
-                    //     {
-                    //         new_level.addTriggerVariable(variable_index, variable_value, tctype, ttype, trigger_set_level, trigger_time);
-                    //     }
-                    //     else if (ttype == TTYPE_SETVARIABLE || ttype == TTYPE_ADDVARIABLE || ttype == TTYPE_SUBTRACTVARIABLE)
-                    //     {
-                    //         new_level.addTriggerVariable(variable_index, variable_value, tctype, ttype, variable_update_index, variable_update_value, trigger_time);
-                    //     }
-                    //     else
-                    //     {
-                    //         new_level.addTriggerVariable(new_level.getObjectCount() - 1, variable_index, variable_value, tctype, ttype, trigger_pos, trigger_time);
-                    //     }
-                    // }
-                    // else if (tctype == TCAUSE_UI_HOVERED || tctype == TCAUSE_UI_CLICKED)
-                    // {
-                    //     if (ttype == TTYPE_CHANGELVL)
-                    //     {
-                    //         new_level.addTriggerUI(new_level.getUICount() - 1, tctype, ttype, trigger_set_level, trigger_time);
-                    //     }
-                    //     else if (ttype == TTYPE_SETVARIABLE || ttype == TTYPE_ADDVARIABLE || ttype == TTYPE_SUBTRACTVARIABLE)
-                    //     {
-                    //         new_level.addTriggerUI(new_level.getUICount() - 1, tctype, ttype, variable_update_index, variable_update_value, trigger_time);
-                    //     }
-                    //     else
-                    //     {
-                    //         new_level.addTriggerUI(new_level.getUICount() - 1, new_level.getObjectCount() - 1, tctype, ttype, trigger_pos, trigger_time);
-                    //     }
-                    // }
-                    // else
-                    // {
-                    //     if (ttype == TTYPE_CHANGELVL)
-                    //     {
-                    //         new_level.addTriggerObject(new_level.getObjectCount() - 1, tctype, ttype, trigger_set_level, trigger_time);
-                    //     }
-                    //     else if (ttype == TTYPE_SETVARIABLE || ttype == TTYPE_ADDVARIABLE || ttype == TTYPE_SUBTRACTVARIABLE)
-                    //     {
-                    //         new_level.addTriggerObject(new_level.getObjectCount() - 1, tctype, ttype, variable_update_index, variable_update_value, trigger_time);
-                    //     }
-                    //     else
-                    //     {
-                    //         new_level.addTriggerObject(new_level.getObjectCount() - 1, tctype, ttype, trigger_pos, trigger_time);
-                    //     }
-                    // }
                     making = LCOMM_NONE;
                     step = -1;
                     break;
@@ -534,6 +529,12 @@ void level::addUIObject(glm::vec2 pos, glm::vec2 scale, unsigned int texture)
 
     ui_objects.push_back({quad, ui_collider});
 }
+void level::addAudio(std::string id, std::string path)
+{
+    audio_player_struct *audio_player = audio_player_struct::getInstance();
+    audio_player->load_audio(id, path);
+}
+
 void level::addTriggerObjectCheck(unsigned int objIndex, trigger_cause_type tct, trigger_type tt)
 {
     triggers.push_back(level_trigger(objIndex, 0, 0, 0.0, tct, tt));
@@ -566,71 +567,6 @@ void level::setTriggerAudioResponse(std::string audioID, double time)
 void level::setTriggerLevelResponse(std::string levelStr, double time)
 {
     triggers[triggers.size() - 1].setLevelResponse(levelStr, time);
-}
-
-// void level::addTriggerObject(unsigned int objIndex, trigger_cause_type tct, trigger_type tt, glm::vec3 pos, double time)
-// {
-//     triggers.push_back(level_trigger(objIndex, 0, 0, 0, 0.0, 0.0, tct, tt, pos, time, "", ""));
-//     objects[objIndex].visual.makeDynamic();
-//     ++trigger_count;
-// }
-// void level::addTriggerObject(unsigned int objIndex, trigger_cause_type tct, trigger_type tt, unsigned int updvariable_index, double updvariable_value, double time)
-// {
-//     triggers.push_back(level_trigger(objIndex, 0, 0, updvariable_index, 0.0, updvariable_value, tct, tt, glm::vec3(0.0), time, "", ""));
-//     ++trigger_count;
-// }
-// void level::addTriggerObject(unsigned int objIndex, trigger_cause_type tct, trigger_type tt, std::string trigger_set_level, double time)
-// {
-//     triggers.push_back(level_trigger(objIndex, 0, 0, 0, 0.0, 0.0, tct, tt, glm::vec3(0.0), time, trigger_set_level, ""));
-//     ++trigger_count;
-// }
-// void level::addTriggerObject(unsigned int objIndex, trigger_cause_type tct, trigger_type tt, std::string audio_id, double time)
-// {
-//     triggers.push_back(level_trigger(objIndex, 0, 0, 0, 0.0, 0.0, tct, tt, glm::vec3(0.0), time, "", audio_id));
-//     ++trigger_count;
-// }
-// void level::addTriggerVariable(unsigned int objIndex, unsigned int varIndex, double varValue, trigger_cause_type tct, trigger_type tt, glm::vec3 pos, double time)
-// {
-//     objects[objIndex].visual.makeDynamic();
-//     triggers.push_back(level_trigger(objIndex, 0, varIndex, 0, varValue, 0.0, tct, tt, pos, time, "", ""));
-//     ++trigger_count;
-// }
-// void level::addTriggerVariable(unsigned int varIndex, double varValue, trigger_cause_type tct, trigger_type tt, unsigned int updvariable_index, double updvariable_value, double time)
-// {
-//     triggers.push_back(level_trigger(0, 0, varIndex, updvariable_index, varValue, updvariable_value, tct, tt, glm::vec3(0.0), time, "", ""));
-//     ++trigger_count;
-// }
-// void level::addTriggerVariable(unsigned int varIndex, double varValue, trigger_cause_type tct, trigger_type tt, std::string trigger_set_level, double time)
-// {
-//     triggers.push_back(level_trigger(0, 0, varIndex, 0, varValue, 0.0, tct, tt, glm::vec3(0.0), time, trigger_set_level, ""));
-//     ++trigger_count;
-// }
-// void level::addTriggerUI(unsigned int uiIndex, unsigned int objIndex, trigger_cause_type tct, trigger_type tt, glm::vec3 pos, double time)
-// {
-//     triggers.push_back(level_trigger(objIndex, uiIndex, 0, 0, 0.0, 0.0, tct, tt, pos, time, "", ""));
-//     ++trigger_count;
-// }
-// void level::addTriggerUI(unsigned int uiIndex, trigger_cause_type tct, trigger_type tt, unsigned int updvariable_index, double updvariable_value, double time)
-// {
-//     triggers.push_back(level_trigger(0, uiIndex, 0, updvariable_index, 0.0, updvariable_value, tct, tt, glm::vec3(0.0), time, "", ""));
-//     ++trigger_count;
-// }
-// void level::addTriggerUI(unsigned int uiIndex, trigger_cause_type tct, trigger_type tt, std::string trigger_set_level, double time)
-// {
-//     triggers.push_back(level_trigger(0, uiIndex, 0, 0, 0.0, 0.0, tct, tt, glm::vec3(0.0), time, trigger_set_level, ""));
-//     ++trigger_count;
-// } // add audio addTrigger funcs here don't forget in the loadLevel func too
-
-void level::scaleObject(glm::vec3 scale, unsigned int index)
-{
-    if (index >= getObjectCount())
-    {
-        std::cout << "That object doesn't or shouldn't exist, there aren't that many in the scene!\n";
-        return;
-    }
-
-    objects[index].visual.Scale(scale);
-    objects[index].collider.scale = scale; // lol
 }
 
 void level::reset()
@@ -874,6 +810,12 @@ void level::updateTriggerResponses(double tick_time)
             {
                 audio_player->stop_audio(triggers[i].audioID);
             }
+            break;
+        case TTYPE_FADEINSOUND:
+            audio_player->set_fade_in(triggers[i].audioID, triggers[i].time);
+            break;
+        case TTYPE_FADEOUTSOUND:
+            audio_player->set_fade_out(triggers[i].audioID, triggers[i].time);
             break;
         default:
             break;
