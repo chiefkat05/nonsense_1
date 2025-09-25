@@ -21,8 +21,8 @@
 
 #include "../headers/system.hxx"
 
-const unsigned int window_width = 640;
-const unsigned int window_height = 420;
+extern const unsigned int window_width = 640;
+extern const unsigned int window_height = 420;
 const double tick_time = 0.01;
 extern const glm::vec3 spawnLocation = glm::vec3(0.0, 0.0, 3.0);
 
@@ -47,6 +47,8 @@ double pitch = 0.0, yaw = -90.0;
 double cameraFloor = 0.0;
 double jump_velocity = 4.0;
 bool onGround = false;
+glm::vec2 mousePos = glm::vec2(0.0);
+bool mouseClicked = false, mousePressed = false;
 
 bool cursorHeld = false;
 
@@ -91,8 +93,10 @@ int main()
 
 #ifndef __EMSCRIPTEN__
     shader shader_main("./shaders/texture.vs", "./shaders/texture.fs");
+    shader shader_ui("./shaders/texture.vs", "./shaders/texture.fs");
 #else
     shader shader_main("./shaders/texture-emscripten.vs", "./shaders/texture-emscripten.fs");
+    shader shader_ui("./shaders/texture-emscripten.vs", "./shaders/texture-emscripten.fs");
 #endif
 
     glEnable(GL_DEPTH_TEST);
@@ -109,13 +113,18 @@ int main()
     glm::mat4 proj = glm::perspective(glm::radians(65.0f), (float)window_width / (float)window_height, 0.1f, 100.0f);
     shader_main.setMat4("projection", proj);
 
-    glfwSetCursorPosCallback(window, mouse_callback);
+    shader_ui.use();
+
+    float window_aspect = static_cast<float>(window_width) / static_cast<float>(window_height);
+    glm::mat4 orth_proj = glm::ortho(0.0f, window_aspect, 0.0f, 1.0f, -1000.0f, 1000.0f);
+    shader_ui.setMat4("projection", orth_proj);
 
     allTextures.addTexture(0, "./img/brick.png");
     allTextures.addTexture(1, "./img/cargo.png");
     allTextures.addTexture(2, "./img/dirt.png");
     allTextures.addTexture(3, "./img/sign.png");
     allTextures.addTexture(4, "./img/death.png");
+    allTextures.addTexture(5, "./img/playbutton.png");
     aabb plcol = makeAABB(glm::vec3(0.0), glm::vec3(0.5, 1.75, 0.5));
 
     bool testbool = false;
@@ -143,10 +152,11 @@ int main()
     }
     ma_sound_start(&music);
 
-    mainGame.setup_level("./levels/spawn.l");
+    mainGame.setup_level("./levels/menu.l");
 
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glfwSetWindowFocusCallback(window, window_focus_callback);
+    glfwSetCursorPosCallback(window, mouse_callback);
 
     double frame_accumulation = 0.0;
     glm::vec3 prevCameraPos = cameraPos;
@@ -173,7 +183,7 @@ int main()
 
             processInput(window);
 
-            mainGame.update(tick_time, cameraPos, prevCameraPos, cameraVelocity, plcol, cameraFront, onGround); // also try cameraPos + cameraVel and cameraPos
+            mainGame.update_level(tick_time, cameraPos, prevCameraPos, cameraVelocity, mousePos, mouseClicked, plcol, cameraFront, onGround); // also try cameraPos + cameraVel and cameraPos
             frame_accumulation -= tick_time;
         }
         double alpha_time = frame_accumulation / tick_time;
@@ -190,8 +200,11 @@ int main()
         view = mCamRotation * mCamTranslate;
         shader_main.setMat4("view", view);
 
+        glm::mat4 ortho_view = glm::lookAt(glm::vec3(0.0, 0.0, -1.0), glm::vec3(0.0), up);
+        shader_ui.setMat4("view", ortho_view);
+
         // inter-update here
-        mainGame.draw(shader_main, alpha_time);
+        mainGame.draw_level(shader_main, shader_ui, alpha_time);
 
         glfwSwapBuffers((GLFWwindow *)window);
         glfwPollEvents();
@@ -217,6 +230,8 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height)
 
 void mouse_callback(GLFWwindow *window, double xpos, double ypos)
 {
+    mousePos = glm::vec2(xpos, (ypos * -1.0) + window_height);
+
     float xoffset = xpos - 0.0;
     float yoffset = 0.0 - ypos;
 
@@ -250,13 +265,6 @@ void mouse_callback(GLFWwindow *window, double xpos, double ypos)
     cameraRight = glm::cross(cameraXZFront, up);
 
     glfwSetCursorPos(window, 0, 0);
-
-    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_1) == GLFW_PRESS)
-    {
-        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-        glfwFocusWindow(window);
-        cursorHeld = true;
-    }
 }
 
 // double stepTimer = 5.0;
@@ -311,6 +319,20 @@ void processInput(GLFWwindow *window)
     {
         glfwSetWindowShouldClose(window, true);
         cursorHeld = false;
+    }
+
+    mouseClicked = false;
+    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_1) == GLFW_PRESS)
+    {
+        mousePressed = true;
+        // glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        // glfwFocusWindow(window);
+        // cursorHeld = true;
+    }
+    if (mousePressed && glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_1) == GLFW_RELEASE)
+    {
+        mousePressed = false;
+        mouseClicked = true;
     }
 }
 void window_focus_callback(GLFWwindow *window, int focused)

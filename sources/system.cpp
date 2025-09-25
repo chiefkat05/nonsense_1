@@ -1,15 +1,15 @@
 #include "../headers/system.hxx"
 
 extern float pixel_scale;
+extern float ui_pixel_scale;
 extern const glm::vec3 spawnLocation;
+extern const unsigned int window_width;
+extern const unsigned int window_height;
 
 void game::setup_level(const char *level_path)
 {
-    // if (level_count >= level_cap)
-    // {
-    //     std::cout << "Level count is over level cap! Please increase the level limit or delete a different level to make room.\n";
-    //     return;
-    // }
+    // insert any existing level global variables back to game list here
+
     level new_level;
 
     std::ifstream level_file(level_path);
@@ -100,6 +100,48 @@ void game::setup_level(const char *level_path)
                     making = LCOMM_VARIABLE;
                     continue;
                 }
+                if (word == "globalvar")
+                {
+                    making = LCOMM_GLOBAL_VARIABLE; // not complete!!
+                    continue;
+                }
+                if (word == "ui")
+                {
+                    making = LCOMM_UI_OBJECT;
+                    continue;
+                }
+            }
+            if (making == LCOMM_UI_OBJECT)
+            {
+                static glm::vec2 ui_pos = glm::vec2(0.0);
+                static glm::vec2 ui_scale = glm::vec2(0.0);
+                unsigned int ui_texture = 0;
+
+                switch (step)
+                {
+                case 0:
+                    ui_pos.x = std::stod(word);
+                    break;
+                case 1:
+                    ui_pos.y = std::stod(word);
+                    break;
+                case 2:
+                    ui_scale.x = std::stod(word);
+                    break;
+                case 3:
+                    ui_scale.y = std::stod(word);
+                    break;
+                case 4:
+                    ui_texture = std::stoi(word);
+
+                    new_level.addUIObject(ui_pos, ui_scale, ui_texture);
+                    making = LCOMM_NONE;
+                    step = -1;
+                    break;
+                default:
+                    break;
+                }
+                ++step;
             }
             if (making == LCOMM_PRIMITIVE || making == LCOMM_PRIMITIVE_PIXELPOS)
             {
@@ -178,7 +220,7 @@ void game::setup_level(const char *level_path)
                 static double trigger_time = 0.0;
                 static int variable_index = -1, variable_update_index = -1;
                 static double variable_value = 0.0, variable_update_value = 0.0;
-                std::string trigger_set_level = level_path;
+                static std::string trigger_set_level = level_path;
 
                 switch (step)
                 {
@@ -198,6 +240,14 @@ void game::setup_level(const char *level_path)
                     else if (word == "is")
                     {
                         step = 6; // becomes 7 before next round
+                    }
+                    else if (word == "hovered")
+                    {
+                        tctype = TCAUSE_UI_HOVERED;
+                    }
+                    else if (word == "clicked")
+                    {
+                        tctype = TCAUSE_UI_CLICKED;
                     }
                     else
                     {
@@ -338,15 +388,30 @@ void game::setup_level(const char *level_path)
                     {
                         if (ttype == TTYPE_CHANGELVL)
                         {
-                            new_level.addTriggerVariable(new_level.getObjectCount() - 1, variable_index, variable_value, tctype, ttype, trigger_set_level, trigger_time);
+                            new_level.addTriggerVariable(variable_index, variable_value, tctype, ttype, trigger_set_level, trigger_time);
                         }
                         else if (ttype == TTYPE_SETVARIABLE || ttype == TTYPE_ADDVARIABLE || ttype == TTYPE_SUBTRACTVARIABLE)
                         {
-                            new_level.addTriggerVariable(new_level.getObjectCount() - 1, variable_index, variable_value, tctype, ttype, variable_update_index, variable_update_value, trigger_time);
+                            new_level.addTriggerVariable(variable_index, variable_value, tctype, ttype, variable_update_index, variable_update_value, trigger_time);
                         }
                         else
                         {
                             new_level.addTriggerVariable(new_level.getObjectCount() - 1, variable_index, variable_value, tctype, ttype, trigger_pos, trigger_time);
+                        }
+                    }
+                    else if (tctype == TCAUSE_UI_HOVERED || tctype == TCAUSE_UI_CLICKED)
+                    {
+                        if (ttype == TTYPE_CHANGELVL)
+                        {
+                            new_level.addTriggerUI(new_level.getUICount() - 1, tctype, ttype, trigger_set_level, trigger_time);
+                        }
+                        else if (ttype == TTYPE_SETVARIABLE || ttype == TTYPE_ADDVARIABLE || ttype == TTYPE_SUBTRACTVARIABLE)
+                        {
+                            new_level.addTriggerUI(new_level.getUICount() - 1, tctype, ttype, variable_update_index, variable_update_value, trigger_time);
+                        }
+                        else
+                        {
+                            new_level.addTriggerUI(new_level.getUICount() - 1, new_level.getObjectCount() - 1, tctype, ttype, trigger_pos, trigger_time);
                         }
                     }
                     else
@@ -373,31 +438,26 @@ void game::setup_level(const char *level_path)
             }
         }
     }
-    // levels.push_back(new_level);
-    // ++level_count;
     current_level = new_level;
 }
 
-void game::update(double tick_time, glm::vec3 &plPos, glm::vec3 &plLastPos, glm::vec3 &plVel, aabb &plCol, glm::vec3 camDir, bool &onG)
+void game::update_level(double tick_time, glm::vec3 &plPos, glm::vec3 &plLastPos, glm::vec3 &plVel, glm::vec2 &mousePos, bool &mouseClicked, aabb &plCol, glm::vec3 camDir, bool &onG)
 {
-    // if (level_count <= level_id)
-    // {
-    //     std::cout << "level at index " << level_id << " does not exist.\n";
-    //     return;
-    // }
     if (current_level.setLevel != "")
     {
-        setup_level(current_level.setLevel.c_str());
+        std::string new_level_path = current_level.setLevel;
+        current_level.reset();
+        setup_level(new_level_path.c_str());
         plPos = spawnLocation;
         return;
     }
-    current_level.updateTriggerChecks(plCol, plPos, camDir);
+    current_level.updateTriggerChecks(plCol, plPos, camDir, mousePos, mouseClicked);
     current_level.updateTriggerPhysics(tick_time);
     current_level.updatePlayerPhysics(tick_time, plPos, plLastPos, plVel, plCol, onG);
 }
-void game::draw(shader &shad, double alpha)
+void game::draw_level(shader &shad, shader &shad_ui, double alpha)
 {
-    current_level.drawLevel(shad, alpha);
+    current_level.drawLevel(shad, shad_ui, alpha);
 }
 
 void level::addObject(model_primitive_type model_type, glm::vec3 pos, glm::vec3 scale, unsigned int texture, object_type type, bool visible)
@@ -411,44 +471,69 @@ void level::addObject(model_primitive_type model_type, glm::vec3 pos, glm::vec3 
     objects.push_back({c, col, type});
     ++object_count;
 }
+void level::addVariable(std::string id, double value)
+{
+    variables.push_back({id, value});
+    ++variable_count;
+}
+void level::addUIObject(glm::vec2 pos, glm::vec2 scale, unsigned int texture)
+{
+    model_primitive quad(MODEL_QUAD);
+    quad.Image(texture);
+    quad.Put(-pos.x / ui_pixel_scale, pos.y / ui_pixel_scale, 0.0);
+    double pixel_multi = 1.0 / ui_pixel_scale;
+    quad.Scale(scale.x * pixel_multi, scale.y * pixel_multi, 1.0);
+    aabb2d ui_collider({pos * ((float)window_height / ui_pixel_scale), glm::vec2(scale.x * (float)window_height * pixel_multi, scale.y * (float)window_height * pixel_multi)});
+
+    ui_objects.push_back({quad, ui_collider});
+    ++ui_object_count;
+}
 void level::addTriggerObject(unsigned int objIndex, trigger_cause_type tct, trigger_type tt, glm::vec3 pos, double time)
 {
-    triggers.push_back(level_trigger(objIndex, tct, tt, pos, time));
+    triggers.push_back(level_trigger(objIndex, 0, 0, 0, 0.0, 0.0, tct, tt, pos, time, ""));
     objects[objIndex].visual.makeDynamic();
     ++trigger_count;
 }
 void level::addTriggerObject(unsigned int objIndex, trigger_cause_type tct, trigger_type tt, unsigned int updvariable_index, double updvariable_value, double time)
 {
-    triggers.push_back(level_trigger(objIndex, tct, tt, updvariable_index, updvariable_value, time));
-    // objects[objIndex].visual.makeDynamic(); I don't think this is needed? since the object is not changing
+    triggers.push_back(level_trigger(objIndex, 0, 0, updvariable_index, 0.0, updvariable_value, tct, tt, glm::vec3(0.0), time, ""));
     ++trigger_count;
 }
 void level::addTriggerObject(unsigned int objIndex, trigger_cause_type tct, trigger_type tt, std::string trigger_set_level, double time)
 {
-    triggers.push_back(level_trigger(objIndex, tct, tt, trigger_set_level, time));
-    // objects[objIndex].visual.makeDynamic(); I don't think this is needed? since the object is not changing
+    triggers.push_back(level_trigger(objIndex, 0, 0, 0, 0.0, 0.0, tct, tt, glm::vec3(0.0), time, trigger_set_level));
     ++trigger_count;
 }
 void level::addTriggerVariable(unsigned int objIndex, unsigned int varIndex, double varValue, trigger_cause_type tct, trigger_type tt, glm::vec3 pos, double time)
 {
     objects[objIndex].visual.makeDynamic();
-    triggers.push_back(level_trigger(objIndex, varIndex, varValue, tct, tt, pos, time));
+    triggers.push_back(level_trigger(objIndex, 0, varIndex, 0, varValue, 0.0, tct, tt, pos, time, ""));
     ++trigger_count;
 }
-void level::addTriggerVariable(unsigned int objIndex, unsigned int varIndex, double varValue, trigger_cause_type tct, trigger_type tt, unsigned int updvariable_index, double updvariable_value, double time)
+void level::addTriggerVariable(unsigned int varIndex, double varValue, trigger_cause_type tct, trigger_type tt, unsigned int updvariable_index, double updvariable_value, double time)
 {
-    triggers.push_back(level_trigger(objIndex, varIndex, varValue, tct, tt, updvariable_index, updvariable_value, time));
+    triggers.push_back(level_trigger(0, 0, varIndex, updvariable_index, varValue, updvariable_value, tct, tt, glm::vec3(0.0), time, ""));
     ++trigger_count;
 }
-void level::addTriggerVariable(unsigned int objIndex, unsigned int varIndex, double varValue, trigger_cause_type tct, trigger_type tt, std::string trigger_set_level, double time)
+void level::addTriggerVariable(unsigned int varIndex, double varValue, trigger_cause_type tct, trigger_type tt, std::string trigger_set_level, double time)
 {
-    triggers.push_back(level_trigger(objIndex, varIndex, varValue, tct, tt, trigger_set_level, time));
+    triggers.push_back(level_trigger(0, 0, varIndex, 0, varValue, 0.0, tct, tt, glm::vec3(0.0), time, trigger_set_level));
     ++trigger_count;
 }
-void level::addVariable(std::string id, double value)
+void level::addTriggerUI(unsigned int uiIndex, unsigned int objIndex, trigger_cause_type tct, trigger_type tt, glm::vec3 pos, double time)
 {
-    variables.push_back({id, value});
-    ++variable_count;
+    triggers.push_back(level_trigger(objIndex, uiIndex, 0, 0, 0.0, 0.0, tct, tt, pos, time, ""));
+    ++trigger_count;
+}
+void level::addTriggerUI(unsigned int uiIndex, trigger_cause_type tct, trigger_type tt, unsigned int updvariable_index, double updvariable_value, double time)
+{
+    triggers.push_back(level_trigger(0, uiIndex, 0, updvariable_index, 0.0, updvariable_value, tct, tt, glm::vec3(0.0), time, ""));
+    ++trigger_count;
+}
+void level::addTriggerUI(unsigned int uiIndex, trigger_cause_type tct, trigger_type tt, std::string trigger_set_level, double time)
+{
+    triggers.push_back(level_trigger(0, uiIndex, 0, 0, 0.0, 0.0, tct, tt, glm::vec3(0.0), time, trigger_set_level));
+    ++trigger_count;
 }
 
 void level::scaleObject(glm::vec3 scale, unsigned int index)
@@ -463,11 +548,28 @@ void level::scaleObject(glm::vec3 scale, unsigned int index)
     objects[index].collider.scale = scale; // lol
 }
 
-void level::drawLevel(shader &shad, double alpha) // please add multi-shader support
+void level::reset()
+{
+    objects.clear();
+    ui_objects.clear();
+    variables.clear();
+    triggers.clear();
+    object_count = 0;
+    ui_object_count = 0;
+    variable_count = 0;
+    trigger_count = 0;
+    triggerGameStartedCheck = false;
+    setLevel = "";
+}
+void level::drawLevel(shader &shad, shader &shad_ui, double alpha) // please add multi-shader support
 {
     for (int i = 0; i < object_count; ++i)
     {
-        objects[i].visual.draw(shad, alpha);
+        objects[i].visual.draw(shad, pixel_scale, alpha);
+    }
+    for (int i = 0; i < ui_object_count; ++i)
+    {
+        ui_objects[i].visual.draw(shad_ui, ui_pixel_scale, alpha);
     }
 }
 
@@ -475,7 +577,7 @@ void level::updatePlayerPhysics(double tick_time, glm::vec3 &player_position, gl
 {
     if (object_count == 0)
     {
-        std::cout << "no object levels.\n";
+        // std::cout << "no object levels.\n";
         return;
     }
     if (player_position.y < -25.0) // needs to be taken out in favor of a real looping mechanic??
@@ -541,7 +643,7 @@ void level::updatePlayerPhysics(double tick_time, glm::vec3 &player_position, gl
         player_velocity.y += 0.5 * gravity * tick_time;
 }
 
-void level::updateTriggerChecks(aabb &playerCollider, glm::vec3 &camPos, glm::vec3 &camDir)
+void level::updateTriggerChecks(aabb &playerCollider, glm::vec3 &camPos, glm::vec3 &camDir, glm::vec2 &mousePos, bool &mouseClicked)
 {
     for (int i = 0; i < trigger_count; ++i)
     {
@@ -555,6 +657,20 @@ void level::updateTriggerChecks(aabb &playerCollider, glm::vec3 &camPos, glm::ve
             break;
         case TCAUSE_COLLISION:
             if (!triggers[i].triggered && colliding(playerCollider, objects[triggers[i].objIndex].collider))
+            {
+                triggers[i].timerDown = triggers[i].time;
+                triggers[i].triggered = true;
+            }
+            break;
+        case TCAUSE_UI_HOVERED:
+            if (!triggers[i].triggered && colliding(ui_objects[triggers[i].uiIndex].collider, mousePos))
+            {
+                triggers[i].timerDown = triggers[i].time;
+                triggers[i].triggered = true;
+            }
+            break;
+        case TCAUSE_UI_CLICKED:
+            if (!triggers[i].triggered && colliding(ui_objects[triggers[i].uiIndex].collider, mousePos) && mouseClicked)
             {
                 triggers[i].timerDown = triggers[i].time;
                 triggers[i].triggered = true;
@@ -655,9 +771,8 @@ void level::updateTriggerPhysics(double tick_time)
             if (triggers[i].time == triggers[i].timerDown)
                 variables[triggers[i].varUpdIndex].value -= triggers[i].varUpdValue;
             break;
-        case TTYPE_CHANGELVL: // requires game struct access?
-                              // do this one
-            if (triggers[i].time == triggers[i].timerDown && !triggers[i].triggered || triggers[i].time == 0.0)
+        case TTYPE_CHANGELVL:
+            if (triggers[i].time == triggers[i].timerDown || triggers[i].time == 0.0)
             {
                 setLevel = triggers[i].newLevel;
                 triggers[i].triggered = false;

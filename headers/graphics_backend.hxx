@@ -115,8 +115,8 @@ public:
 
     void Image(unsigned int index);
 
-    void draw(shader &_shader, double alpha);
-    void static_draw(shader &_shader);
+    void draw(shader &_shader, double p_scale, double alpha);
+    void static_draw(shader &_shader, double p_scale);
 
     model_primitive(model_primitive_type type, bool dyn = false, bool visible = true);
 };

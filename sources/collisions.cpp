@@ -11,6 +11,13 @@ bool colliding(aabb first, aabb second)
 
     return true;
 }
+bool colliding(aabb2d box, glm::vec2 point)
+{
+    if (std::abs(box.pos.x - point.x) > box.scale.x * 0.5 || std::abs(box.pos.y - point.y) > box.scale.y * 0.5)
+        return false;
+
+    return true;
+}
 aabb makeAABB(glm::vec3 pos, glm::vec3 scale)
 {
     aabb temp;

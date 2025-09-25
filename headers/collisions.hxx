@@ -16,9 +16,14 @@ typedef struct _raycast
 {
     glm::vec3 pos = glm::vec3(0.0), dir = glm::vec3(0.0);
 } raycast;
+typedef struct _aabb2d
+{
+    glm::vec2 pos = glm::vec2(0.0), scale = glm::vec2(0.0);
+} aabb2d;
 
 bool colliding(aabb first, aabb second);
 bool colliding(raycast ray, aabb box, glm::vec3 &point);
+bool colliding(aabb2d box, glm::vec2 point);
 aabb makeAABB(glm::vec3 pos = glm::vec3(0.0), glm::vec3 scale = glm::vec3(1.0));
 
 typedef struct _collision
