@@ -28,6 +28,7 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 void mouse_callback(GLFWwindow *window, double xpos, double ypos);
 void window_focus_callback(GLFWwindow *window, int focused);
 void processInput(GLFWwindow *window);
+void processDebugInput(GLFWwindow *window);
 
 double delta_time = 0.0,
        lastTime = 0.0, currentTime = 0.0;
@@ -49,6 +50,8 @@ glm::vec2 mousePos = glm::vec2(0.0);
 bool mouseClicked = false, mousePressed = false;
 
 bool cursorHeld = false;
+
+bool debugMode = false;
 
 GLFWwindow *window;
 
@@ -148,9 +151,15 @@ int main()
         {
             prevCameraPos = cameraPos;
 
-            processInput(window);
+            if (!debugMode)
+                processInput(window);
+            if (debugMode)
+                processDebugInput(window);
 
-            mainGame.update_level(tick_time, cameraPos, prevCameraPos, cameraVelocity, mousePos, mouseClicked, plcol, cameraFront, onGround); // also try cameraPos + cameraVel and cameraPos
+            mainGame.update_level(tick_time, cameraPos, prevCameraPos, cameraVelocity, mousePos, mouseClicked, plcol, cameraFront, onGround, debugMode); // also try cameraPos + cameraVel and cameraPos
+            if (debugMode)
+                cameraPos += cameraVelocity * static_cast<float>(tick_time);
+
             frame_accumulation -= tick_time;
         }
         double alpha_time = frame_accumulation / tick_time;
@@ -234,35 +243,76 @@ void mouse_callback(GLFWwindow *window, double xpos, double ypos)
     glfwSetCursorPos(window, 0, 0);
 }
 
-// double stepTimer = 5.0;
-void processInput(GLFWwindow *window)
+void processDebugInput(GLFWwindow *window)
 {
-    // if (stepTimer < 0.0 && onGround)
-    // {
-    //     stepTimer = 5.0;
-    //     ma_sound_start(&stepsfx);
-    // }
-
+    if (glfwGetKey(window, GLFW_KEY_F2) == GLFW_PRESS)
+    {
+        std::cout << "Exiting debug mode." << std::endl;
+        debugMode = false;
+    }
     glm::vec3 moveDir = glm::vec3(0.0);
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
     {
         moveDir += cameraXZFront * static_cast<float>(CAMERA_SPEED);
-        // stepTimer -= 15.0 * delta_time;
     }
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
     {
         moveDir += -cameraXZFront * static_cast<float>(CAMERA_SPEED);
-        // stepTimer -= 15.0 * delta_time;
     }
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
     {
         moveDir += -cameraRight * static_cast<float>(CAMERA_SPEED);
-        // stepTimer -= 15.0 * delta_time;
     }
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
     {
         moveDir += cameraRight * static_cast<float>(CAMERA_SPEED);
-        // stepTimer -= 15.0 * delta_time;
+    }
+    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
+    {
+        moveDir.y = CAMERA_SPEED;
+    }
+    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
+    {
+        moveDir.y = -CAMERA_SPEED;
+    }
+
+    cameraVelocity = moveDir;
+
+    if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS)
+    {
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        cursorHeld = true;
+    }
+    if (glfwGetKey(window, GLFW_KEY_G) == GLFW_PRESS)
+    {
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+        cursorHeld = false;
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+    {
+        glfwSetWindowShouldClose(window, true);
+        cursorHeld = false;
+    }
+}
+void processInput(GLFWwindow *window)
+{
+    glm::vec3 moveDir = glm::vec3(0.0);
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+    {
+        moveDir += cameraXZFront * static_cast<float>(CAMERA_SPEED);
+    }
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+    {
+        moveDir += -cameraXZFront * static_cast<float>(CAMERA_SPEED);
+    }
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+    {
+        moveDir += -cameraRight * static_cast<float>(CAMERA_SPEED);
+    }
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+    {
+        moveDir += cameraRight * static_cast<float>(CAMERA_SPEED);
     }
 
     if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && onGround)
@@ -300,6 +350,12 @@ void processInput(GLFWwindow *window)
     {
         mousePressed = false;
         mouseClicked = true;
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_F1) == GLFW_PRESS)
+    {
+        std::cout << "Enabling debug mode for level: " << mainGame.current_level_path << std::endl;
+        debugMode = true;
     }
 }
 void window_focus_callback(GLFWwindow *window, int focused)

@@ -9,6 +9,7 @@ extern const unsigned int window_height;
 
 void game::setup_level(const char *level_path)
 {
+    current_level_path = level_path;
     level new_level;
 
     std::ifstream level_file(level_path);
@@ -485,7 +486,8 @@ void game::setup_level(const char *level_path)
     current_level = new_level;
 }
 
-void game::update_level(double tick_time, glm::vec3 &plPos, glm::vec3 &plLastPos, glm::vec3 &plVel, glm::vec2 &mousePos, bool &mouseClicked, aabb &plCol, glm::vec3 camDir, bool &onG)
+void game::update_level(double tick_time, glm::vec3 &plPos, glm::vec3 &plLastPos, glm::vec3 &plVel,
+                        glm::vec2 &mousePos, bool &mouseClicked, aabb &plCol, glm::vec3 camDir, bool &onG, bool debug)
 {
     if (current_level.setLevel != "")
     {
@@ -497,7 +499,8 @@ void game::update_level(double tick_time, glm::vec3 &plPos, glm::vec3 &plLastPos
     }
     current_level.updateTriggerChecks(plCol, plPos, camDir, mousePos, mouseClicked);
     current_level.updateTriggerResponses(tick_time);
-    current_level.updatePlayerPhysics(tick_time, plPos, plLastPos, plVel, plCol, onG);
+    if (!debug)
+        current_level.updatePlayerPhysics(tick_time, plPos, plLastPos, plVel, plCol, onG);
 }
 void game::draw_level(shader &shad, shader &shad_ui, double alpha)
 {

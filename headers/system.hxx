@@ -189,8 +189,10 @@ private:
 public:
     void setup_level(const char *level_path);
 
-    void update_level(double tick_time, glm::vec3 &plPos, glm::vec3 &plLastPos, glm::vec3 &plVel, glm::vec2 &mousePos, bool &mouseClicked, aabb &plCol, glm::vec3 camDir, bool &onG);
+    void update_level(double tick_time, glm::vec3 &plPos, glm::vec3 &plLastPos, glm::vec3 &plVel, glm::vec2 &mousePos,
+                      bool &mouseClicked, aabb &plCol, glm::vec3 camDir, bool &onG, bool debug = false);
     void draw_level(shader &shad, shader &shad_ui, double alpha);
+    std::string current_level_path = "";
 };
 
 #endif
