@@ -16,10 +16,8 @@
 #include <sys/resource.h>
 #endif
 
-#define MINIAUDIO_IMPLEMENTATION
-#include "../deps/miniaudio.h"
-
 #include "../headers/system.hxx"
+#include "../headers/audio.hxx"
 
 extern const unsigned int window_width = 640;
 extern const unsigned int window_height = 420;
@@ -59,9 +57,6 @@ void main_loop(void *mLoopArg)
 {
     loop();
 }
-ma_result result;
-ma_engine engine;
-ma_sound music, landsfx, stepsfx;
 
 game mainGame;
 texturegroup allTextures;
@@ -129,28 +124,11 @@ int main()
 
     bool testbool = false;
 
-    result = ma_engine_init(NULL, &engine);
-    if (result != MA_SUCCESS)
-    {
-        return -1;
-    }
+    audio_player_struct *audio_player = audio_player_struct::getInstance();
 
-    result = ma_sound_init_from_file(&engine, "./snd/weary.mp3", 0, NULL, NULL, &music);
-    if (result != MA_SUCCESS)
-    {
-        return -1;
-    }
-    result = ma_sound_init_from_file(&engine, "./snd/land.wav", 0, NULL, NULL, &landsfx);
-    if (result != MA_SUCCESS)
-    {
-        return -1;
-    }
-    result = ma_sound_init_from_file(&engine, "./snd/step.wav", 0, NULL, NULL, &stepsfx);
-    if (result != MA_SUCCESS)
-    {
-        return -1;
-    }
-    ma_sound_start(&music);
+    audio_player->load_audio("music", "./snd/yippe.mp3");
+    // ma_sound_start(&music);
+    audio_player->play_audio("music");
 
     mainGame.setup_level("./levels/menu.l");
 
@@ -163,10 +141,7 @@ int main()
 
     loop = [&]
     {
-        if (ma_sound_at_end(&music))
-        {
-            ma_sound_seek_to_pcm_frame(&music, 0);
-        }
+        audio_player->loop("music", 0.05);
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glClearColor(0.4, 0.6, 0.9, 1.0);
