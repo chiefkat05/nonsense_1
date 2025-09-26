@@ -24,10 +24,14 @@ void game::setup_level(const char *level_path)
     int step = 0;
     std::string word = "", line = "";
     double pixel_division = 1.0;
+    unsigned int lineNum = 0;
     while (std::getline(level_file, line))
     {
         if (line[0] == '/')
+        {
+            ++lineNum;
             continue;
+        }
 
         std::stringstream ss(line);
         while (std::getline(ss, word, ' '))
@@ -157,6 +161,7 @@ void game::setup_level(const char *level_path)
                     ui_texture = std::stoi(word);
 
                     new_level.addUIObject(ui_pos, ui_scale, ui_texture);
+                    new_level.getUIAtIndex(new_level.getUICount() - 1)->lineIndex = lineNum;
                     making = LCOMM_NONE;
                     step = -1;
                     break;
@@ -205,6 +210,7 @@ void game::setup_level(const char *level_path)
                     new_type = static_cast<object_type>(std::stoi(word));
 
                     new_level.addObject(model_type, new_position, new_scale, new_texture, new_type, visible);
+                    new_level.getObjectAtIndex(new_level.getObjectCount() - 1)->lineIndex = lineNum;
                     making = LCOMM_NONE;
                     step = -1;
                     visible = true;
@@ -226,6 +232,7 @@ void game::setup_level(const char *level_path)
                 case 1:
                     value = std::stod(word);
                     new_level.addVariable(sID, value);
+                    new_level.getVariableAtIndex(new_level.getVariableCount() - 1)->lineIndex = lineNum;
                     making = LCOMM_NONE;
                     step = -1;
                     break;
@@ -474,6 +481,7 @@ void game::setup_level(const char *level_path)
                     default:
                         break;
                     }
+                    new_level.getTriggerAtIndex(new_level.getTriggerCount() - 1)->lineIndex = lineNum;
                     making = LCOMM_NONE;
                     step = -1;
                     break;
@@ -482,7 +490,10 @@ void game::setup_level(const char *level_path)
                 ++step;
             }
         }
+        ++lineNum;
     }
+
+    level_file.close();
     current_level = new_level;
 }
 

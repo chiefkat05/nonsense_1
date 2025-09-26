@@ -115,6 +115,7 @@ std::string readFile(std::string path)
         output.append(line);
         output.append("\n");
     }
+    input.close();
     return output;
 }
 
@@ -284,6 +285,7 @@ void model_primitive::draw(shader &_shader, double p_scale, double alpha)
     _shader.setVec3("texture_scale", interScale * static_cast<float>(p_scale));
     _shader.setVec2("texture_pixel_scale", glm::vec2(1.0) / glm::vec2(allTextures.getTextureAtIndex(textureIndex)->getSize()));
     _shader.setMat4("model", model);
+    _shader.setVec4("color", color);
 
     if (alpha == 1.0)
     {
@@ -317,6 +319,7 @@ void model_primitive::static_draw(shader &_shader, double p_scale)
     _shader.setVec3("texture_scale", scale * static_cast<float>(p_scale));
     _shader.setVec2("texture_pixel_scale", glm::vec2(1.0) / glm::vec2(allTextures.getTextureAtIndex(textureIndex)->getSize()));
     _shader.setMat4("model", model);
+    _shader.setVec4("color", color);
 
     glBindVertexArray(VAO);
     glDrawArrays(GL_TRIANGLES, 0, vertex_count);

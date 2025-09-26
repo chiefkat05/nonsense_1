@@ -73,6 +73,8 @@ private:
     glm::quat rotation = glm::quat(glm::vec3(0.0));
     glm::quat last_rotation = glm::quat(glm::vec3(0.0));
 
+    glm::vec4 color = glm::vec4(1.0);
+
 public:
     glm::vec3 rotation_direction = glm::vec3(0.0);
     glm::vec3 getPos()
@@ -114,11 +116,24 @@ public:
     void Rotate(double x = 0.0, double y = 0.0, double z = 0.0);
 
     void Image(unsigned int index);
+    void SetColor(glm::vec4 color)
+    {
+        color = color;
+    }
+    void SetColor(glm::vec3 color)
+    {
+        color = glm::vec4(color.r, color.g, color.b, 1.0);
+    }
+    void SetColor(double r, double g, double b, double a = 1.0)
+    {
+        color = glm::vec4(r, g, b, a);
+    }
 
     void draw(shader &_shader, double p_scale, double alpha);
     void static_draw(shader &_shader, double p_scale);
 
     model_primitive(model_primitive_type type, bool dyn = false, bool visible = true);
+    model_primitive() {}
 };
 
 class texture

@@ -61,16 +61,11 @@ struct level_object
     model_primitive visual;
     aabb collider;
     object_type type;
+    unsigned int lineIndex = 0;
 };
 
-// struct trigger_obj_response
-// {
-//     unsigned int obj_index = 0;
-//     glm::vec3 pos
-// };
-
 struct level_trigger // I think there could be a less complicated way of doing this
-{                    // you know you'll have to revamp the trigger system at some point lmao
+{
     bool triggered = false;
     unsigned int objIndex = 0;
     unsigned int uiIndex = 0;
@@ -82,9 +77,11 @@ struct level_trigger // I think there could be a less complicated way of doing t
     glm::vec3 pos = glm::vec3(0.0);
     double time = 0.0, timerDown = 0.0;
     std::string newLevel = "";
+    unsigned int lineIndex = 0;
 
     level_trigger(unsigned int _oi, unsigned int _ui, unsigned int _vci, double _vvc, trigger_cause_type _ct, trigger_type _t)
         : objIndex(_oi), uiIndex(_ui), varCheckIndex(_vci), varValueCompare(_vvc), ctype(_ct), type(_t) {}
+    level_trigger() {}
 
     void setObjResponse(unsigned int _oi, glm::vec3 _p, double _t)
     {
@@ -114,12 +111,14 @@ struct level_variable
 {
     std::string strID = "null_variable";
     double value = 0.0;
+    unsigned int lineIndex = 0;
 };
 
 struct ui_object
 {
     model_primitive visual;
     aabb2d collider;
+    unsigned int lineIndex = 0;
 };
 
 class level
@@ -157,7 +156,18 @@ public:
     {
         return &variables[index];
     }
-
+    inline level_object *getObjectAtIndex(unsigned int index)
+    {
+        return &objects[index];
+    }
+    inline ui_object *getUIAtIndex(unsigned int index)
+    {
+        return &ui_objects[index];
+    }
+    inline level_trigger *getTriggerAtIndex(unsigned int index)
+    {
+        return &triggers[index];
+    }
     void addObject(model_primitive_type model_type, glm::vec3 pos, glm::vec3 scale, unsigned int texture, object_type type, bool visible = true);
     void addVariable(std::string id, double value);
     void addUIObject(glm::vec2 pos, glm::vec2 scale, unsigned int texture);
@@ -193,6 +203,11 @@ public:
                       bool &mouseClicked, aabb &plCol, glm::vec3 camDir, bool &onG, bool debug = false);
     void draw_level(shader &shad, shader &shad_ui, double alpha);
     std::string current_level_path = "";
+
+    inline level *getCurrentLevel()
+    {
+        return &current_level;
+    }
 };
 
 #endif

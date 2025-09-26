@@ -18,10 +18,13 @@
 
 #include "../headers/system.hxx"
 #include "../headers/audio.hxx"
+#include "../headers/editor.hxx"
 
 extern const unsigned int window_width = 640;
 extern const unsigned int window_height = 420;
 const double tick_time = 0.01;
+const unsigned int frameUpdateLimit = 60;
+unsigned int frameUpdateCount = 0;
 extern const glm::vec3 spawnLocation = glm::vec3(0.0, 0.0, 3.0);
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
@@ -32,6 +35,11 @@ void processDebugInput(GLFWwindow *window);
 
 double delta_time = 0.0,
        lastTime = 0.0, currentTime = 0.0;
+
+double debugSaveTimer = 0.0;
+const double debugSaveCountdown = 5.0;
+templevel editor_level;
+
 glm::vec3 cameraPos = spawnLocation;
 glm::vec3 cameraOffset = glm::vec3(0.0, 0.5, 0.0);
 glm::vec3 cameraFront = glm::vec3(0.0, 0.0, -1.0);
@@ -90,11 +98,11 @@ int main()
 #endif
 
 #ifndef __EMSCRIPTEN__
-    shader shader_main("./shaders/texture.vs", "./shaders/texture.fs");
-    shader shader_ui("./shaders/texture.vs", "./shaders/texture.fs");
+    shader shader_main("./shaders/texture.vs", "./shaders/texture-color.fs");
+    shader shader_ui("./shaders/texture.vs", "./shaders/texture-color.fs");
 #else
-    shader shader_main("./shaders/texture-emscripten.vs", "./shaders/texture-emscripten.fs");
-    shader shader_ui("./shaders/texture-emscripten.vs", "./shaders/texture-emscripten.fs");
+    shader shader_main("./shaders/texture-emscripten.vs", "./shaders/texture-emscripten-color.fs");
+    shader shader_ui("./shaders/texture-emscripten.vs", "./shaders/texture-emscripten-color.fs");
 #endif
 
     glEnable(GL_DEPTH_TEST);
@@ -154,11 +162,16 @@ int main()
             if (!debugMode)
                 processInput(window);
             if (debugMode)
+            {
                 processDebugInput(window);
+            }
 
             mainGame.update_level(tick_time, cameraPos, prevCameraPos, cameraVelocity, mousePos, mouseClicked, plcol, cameraFront, onGround, debugMode); // also try cameraPos + cameraVel and cameraPos
             if (debugMode)
+            {
                 cameraPos += cameraVelocity * static_cast<float>(tick_time);
+                editor_level.updateSelection(cameraPos, prevCameraPos);
+            }
 
             frame_accumulation -= tick_time;
         }
@@ -179,6 +192,16 @@ int main()
         glm::mat4 ortho_view = glm::lookAt(glm::vec3(0.0, 0.0, -1.0), glm::vec3(0.0), up);
         shader_ui.setMat4("view", ortho_view);
 
+        if (debugMode)
+        {
+            if (frameUpdateCount >= frameUpdateLimit)
+            {
+                editor_level.updateFile();
+                frameUpdateCount = 0;
+            }
+            frameUpdateCount += 1;
+        }
+
         // inter-update here
         mainGame.draw_level(shader_main, shader_ui, alpha_time);
 
@@ -196,6 +219,7 @@ int main()
     }
 #endif
 
+    editor_level.removeTemp();
     glfwTerminate();
 }
 
@@ -245,35 +269,51 @@ void mouse_callback(GLFWwindow *window, double xpos, double ypos)
 
 void processDebugInput(GLFWwindow *window)
 {
+    double camera_spd = CAMERA_SPEED;
+    if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
+    {
+        camera_spd *= 2.5;
+    }
     if (glfwGetKey(window, GLFW_KEY_F2) == GLFW_PRESS)
     {
-        std::cout << "Exiting debug mode." << std::endl;
+        std::cout << "Please hold the key to save level and exit debug mode... " << debugSaveTimer << " time remaining." << std::endl;
+        debugSaveTimer -= 1.0 * tick_time;
+    }
+    else
+    {
+        debugSaveTimer = debugSaveCountdown;
+    }
+    if (debugSaveTimer <= 0.0)
+    {
+        std::cout << "\tLevel saved, debug mode is now off.\n";
+        editor_level.saveTempToMain();
+        editor_level.removeTemp();
         debugMode = false;
     }
     glm::vec3 moveDir = glm::vec3(0.0);
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
     {
-        moveDir += cameraXZFront * static_cast<float>(CAMERA_SPEED);
+        moveDir += cameraXZFront * static_cast<float>(camera_spd);
     }
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
     {
-        moveDir += -cameraXZFront * static_cast<float>(CAMERA_SPEED);
+        moveDir += -cameraXZFront * static_cast<float>(camera_spd);
     }
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
     {
-        moveDir += -cameraRight * static_cast<float>(CAMERA_SPEED);
+        moveDir += -cameraRight * static_cast<float>(camera_spd);
     }
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
     {
-        moveDir += cameraRight * static_cast<float>(CAMERA_SPEED);
+        moveDir += cameraRight * static_cast<float>(camera_spd);
     }
     if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
     {
-        moveDir.y = CAMERA_SPEED;
+        moveDir.y = camera_spd;
     }
     if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
     {
-        moveDir.y = -CAMERA_SPEED;
+        moveDir.y = -camera_spd;
     }
 
     cameraVelocity = moveDir;
@@ -294,25 +334,42 @@ void processDebugInput(GLFWwindow *window)
         glfwSetWindowShouldClose(window, true);
         cursorHeld = false;
     }
+
+    static bool rightMouseHeld = false;
+    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_2) == GLFW_PRESS)
+    {
+        rightMouseHeld = true;
+    }
+    if (rightMouseHeld && glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_2) == GLFW_RELEASE)
+    {
+        rightMouseHeld = false;
+        editor_level.selectObj(cameraPos, cameraFront);
+    }
 }
 void processInput(GLFWwindow *window)
 {
+    double camera_spd = CAMERA_SPEED;
+    if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
+    {
+        camera_spd *= 1.45;
+    }
+
     glm::vec3 moveDir = glm::vec3(0.0);
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
     {
-        moveDir += cameraXZFront * static_cast<float>(CAMERA_SPEED);
+        moveDir += cameraXZFront * static_cast<float>(camera_spd);
     }
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
     {
-        moveDir += -cameraXZFront * static_cast<float>(CAMERA_SPEED);
+        moveDir += -cameraXZFront * static_cast<float>(camera_spd);
     }
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
     {
-        moveDir += -cameraRight * static_cast<float>(CAMERA_SPEED);
+        moveDir += -cameraRight * static_cast<float>(camera_spd);
     }
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
     {
-        moveDir += cameraRight * static_cast<float>(CAMERA_SPEED);
+        moveDir += cameraRight * static_cast<float>(camera_spd);
     }
 
     if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && onGround)
@@ -355,6 +412,8 @@ void processInput(GLFWwindow *window)
     if (glfwGetKey(window, GLFW_KEY_F1) == GLFW_PRESS)
     {
         std::cout << "Enabling debug mode for level: " << mainGame.current_level_path << std::endl;
+        editor_level = templevel(mainGame.current_level_path);
+        editor_level.copyMainToTemp();
         debugMode = true;
     }
 }

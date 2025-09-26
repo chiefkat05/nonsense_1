@@ -9,6 +9,9 @@ sound music2 ./snd/weary.mp3
 trigger start playsound music2 0.0
 trigger start fadeinsound music2 0.1
 
+// crosshair
+ui 48.0 32.0 2.0 2.0 1
+
 var num 0
 trigger is num greaterthan 0.0 getvar num set 0.0 0.0
 trigger is num lessthan 0.0 getvar num set 0.0 0.0
@@ -67,7 +70,7 @@ pcube 0 16 8 12 8 2 3 0
 cube 0.0 2.25 4.0 2.0 0.5 2.0 0 0
 cube 0.0 1.75 6.0 2.0 0.5 2.0 0 0
 cube 0.0 1.25 8.0 2.0 0.5 2.0 0 0
-cube -2.0 0.75 8.0 2.0 0.5 2.0 0 0
+cube 8.85096 0.75 0.0900986 2.0 0.5 2.0 0 0
 cube -4.0 0.25 8.0 2.0 0.5 2.0 0 0
 cube -4.0 -0.25 6.0 2.0 0.5 2.0 0 0
 
