@@ -130,6 +130,7 @@ private:
     std::vector<ui_object> ui_objects;
 
     bool triggerGameStartedCheck = false;
+    unsigned int lineCount = 0;
 
     double gravity = -9.81;
 
@@ -168,6 +169,15 @@ public:
     {
         return &triggers[index];
     }
+    inline unsigned int getLineCount()
+    {
+        return lineCount;
+    }
+    void addLine()
+    {
+        ++lineCount;
+    }
+
     void addObject(model_primitive_type model_type, glm::vec3 pos, glm::vec3 scale, unsigned int texture, object_type type, bool visible = true);
     void addVariable(std::string id, double value);
     void addUIObject(glm::vec2 pos, glm::vec2 scale, unsigned int texture);

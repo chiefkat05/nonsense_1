@@ -29,6 +29,7 @@ void game::setup_level(const char *level_path)
     {
         if (line[0] == '/')
         {
+            new_level.addLine();
             ++lineNum;
             continue;
         }
@@ -490,6 +491,7 @@ void game::setup_level(const char *level_path)
                 ++step;
             }
         }
+        new_level.addLine();
         ++lineNum;
     }
 
@@ -814,22 +816,26 @@ void level::updateTriggerResponses(double tick_time)
             }
             break;
         case TTYPE_PLAYSOUND:
-            if (triggers[i].time == triggers[i].timerDown || triggers[i].time == 0.0)
+            if ((triggers[i].time == triggers[i].timerDown || triggers[i].time == 0.0))
             {
                 audio_player->play_audio(triggers[i].audioID);
             }
+            triggers[i].triggered = false;
             break;
         case TTYPE_STOPSOUND:
-            if (triggers[i].time == triggers[i].timerDown || triggers[i].time == 0.0)
+            if ((triggers[i].time == triggers[i].timerDown || triggers[i].time == 0.0))
             {
                 audio_player->stop_audio(triggers[i].audioID);
             }
+            triggers[i].triggered = false;
             break;
         case TTYPE_FADEINSOUND:
             audio_player->set_fade_in(triggers[i].audioID, triggers[i].time);
+            triggers[i].triggered = false;
             break;
         case TTYPE_FADEOUTSOUND:
             audio_player->set_fade_out(triggers[i].audioID, triggers[i].time);
+            triggers[i].triggered = false;
             break;
         default:
             break;

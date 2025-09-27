@@ -7,6 +7,7 @@
 #include "../headers/system.hxx"
 
 extern game mainGame;
+extern texturegroup allTextures;
 
 class templevel
 {
@@ -49,6 +50,7 @@ private:
     ui_object temp_ui;
 
     unsigned int edit_line = 0;
+    int updateNum = 0;
     int selectedObj = -1, selectedTrigger = -1, selectedVariable = -1, selectedUI = -1;
 
 public:
@@ -76,7 +78,52 @@ public:
             std::cout << "Error: file at " << temp_path << " cannot be deleted because it doesn't exist!\n";
     }
 
-    void selectObj(glm::vec3 camPos, glm::vec3 camDir) // now add support for pcubes, variables, triggers, and everything else. There should be a key that locks the cube in place and scales according to player movement instead
+    void newObject()
+    {
+        mainGame.getCurrentLevel()->addObject(MODEL_CUBE, glm::vec3(0.0), glm::vec3(1.0), 0, OBJ_SOLID, true);
+        std::ofstream output(temp_path, std::ios::app);
+        if (!output.is_open())
+        {
+            std::cout << "New object error: failed to open " << temp_path << "\n";
+            return;
+        }
+        output << "\n"
+               << "cube 0.0 0.0 0.0 1.0 1.0 1.0 0 0" << "\n";
+        output.close();
+
+        level_object *obj = mainGame.getCurrentLevel()->getObjectAtIndex(mainGame.getCurrentLevel()->getObjectCount() - 1);
+        obj->lineIndex = mainGame.getCurrentLevel()->getLineCount() - 1;
+        obj->visual.makeDynamic();
+        obj->visual.SetColor(0.5, 1.0, 0.5, 1.0);
+    }
+    void duplicateSelectedObject()
+    {
+        level_object *obj = mainGame.getCurrentLevel()->getObjectAtIndex(selectedObj);
+        mainGame.getCurrentLevel()->addObject(MODEL_CUBE, obj->visual.getPos(), obj->visual.getScale(), obj->visual.getImage(), obj->type, true);
+        std::ofstream output(temp_path, std::ios::app);
+        if (!output.is_open())
+        {
+            std::cout << "New object error: failed to open " << temp_path << "\n";
+            return;
+        }
+        output << "\n"
+               << "cube " << std::to_string(obj->visual.getPos().x) << " "
+               << std::to_string(obj->visual.getPos().y) << " "
+               << std::to_string(obj->visual.getPos().z) << " "
+               << std::to_string(obj->visual.getScale().x) << " "
+               << std::to_string(obj->visual.getScale().y) << " "
+               << std::to_string(obj->visual.getScale().z) << " "
+               << std::to_string(obj->visual.getImage()) << " "
+               << std::to_string(obj->type) << "\n";
+        output.close();
+        level_object *duped_obj = mainGame.getCurrentLevel()->getObjectAtIndex(mainGame.getCurrentLevel()->getObjectCount() - 1);
+        duped_obj->lineIndex = mainGame.getCurrentLevel()->getLineCount() - 1;
+        duped_obj->visual.makeDynamic();
+        duped_obj->visual.SetColor(0.5, 1.0, 0.5, 1.0);
+        obj->visual.SetColor(1.0, 1.0, 1.0, 1.0);
+    }
+
+    void selectObj(glm::vec3 camPos, glm::vec3 camDir, int &textureOffset) // now add support for pcubes, variables, triggers, and everything else. There should be a key that locks the cube in place and scales according to player movement instead
     {
         int closestObj = -1;
         double contactDistance = std::numeric_limits<double>::infinity();
@@ -107,28 +154,101 @@ public:
         if (selectedObj != closestObj)
         {
             selectedObj = closestObj;
+            updateNum = 0;
         }
         else if (selectedObj == closestObj)
         {
-            selectedObj = -1;
-            return;
+            ++updateNum;
+            if (updateNum > 2)
+            {
+                updateNum = 0;
+                selectedObj = -1;
+                return;
+            }
         }
         obj = mainGame.getCurrentLevel()->getObjectAtIndex(selectedObj);
 
-        mainGame.getCurrentLevel()->getObjectAtIndex(closestObj)->visual.makeDynamic();
-        obj->visual.SetColor(0.5, 1.0, 0.5, 1.0);
+        if (!obj->visual.isDynamic())
+            obj->visual.makeDynamic();
+
+        switch (updateNum)
+        {
+        case 0:
+            obj->visual.SetColor(0.5, 1.0, 0.5, 1.0);
+            break;
+        case 1:
+            obj->visual.SetColor(1.0, 0.5, 1.0, 1.0);
+            break;
+        case 2:
+            obj->visual.SetColor(0.5, 0.5, 0.5, 1.0);
+            textureOffset = obj->visual.getImage();
+            break;
+        default:
+            break;
+        }
 
         edit_line = obj->lineIndex;
     }
 
-    void updateSelection(glm::vec3 camPos, glm::vec3 prevCamPos)
+    void updateObj(glm::vec3 camPos, glm::vec3 prevCamPos, int &textureOffset, bool &textureEditing, bool &createObjCall)
     {
+        textureEditing = false;
+        if (createObjCall && selectedObj == -1)
+        {
+            newObject();
+            selectedObj = mainGame.getCurrentLevel()->getObjectCount() - 1;
+            updateNum = 0;
+        }
+        else if (createObjCall && selectedObj != -1)
+        {
+            duplicateSelectedObject();
+            updateNum = 0;
+        }
+
         if (selectedObj == -1)
             return;
 
         level_object *obj = mainGame.getCurrentLevel()->getObjectAtIndex(selectedObj);
-        obj->visual.Move(camPos - prevCamPos);
-        obj->collider.pos = obj->visual.getPos();
+
+        switch (updateNum)
+        {
+        case 0:
+            obj->visual.Move(camPos - prevCamPos);
+            obj->collider.pos = obj->visual.getPos();
+            break;
+        case 1:
+            obj->visual.Scale(obj->visual.getScale() + (camPos - prevCamPos));
+            if (obj->visual.getScale().x < 0.0)
+            {
+                obj->visual.Scale(0.0, obj->visual.getScale().y, obj->visual.getScale().z);
+            }
+            if (obj->visual.getScale().y < 0.0)
+            {
+                obj->visual.Scale(obj->visual.getScale().x, 0.0, obj->visual.getScale().z);
+            }
+            if (obj->visual.getScale().z < 0.0)
+            {
+                obj->visual.Scale(obj->visual.getScale().x, obj->visual.getScale().y, 0.0);
+            }
+            obj->collider.scale = obj->visual.getScale();
+            break;
+        case 2:
+        {
+            textureEditing = true;
+            if (textureOffset < 0)
+            {
+                textureOffset = allTextures.getTextureCount() - 1;
+            }
+            if (textureOffset > allTextures.getTextureCount() - 1)
+            {
+                textureOffset = 0;
+            }
+            obj->visual.Image(textureOffset);
+        }
+        break;
+        default:
+            break;
+        }
     }
     void updateFile()
     {
@@ -168,6 +288,18 @@ public:
                         break;
                     case 3:
                         newline << (obj->visual.getPos().z) << ' ';
+                        break;
+                    case 4:
+                        newline << (obj->visual.getScale().x) << ' ';
+                        break;
+                    case 5:
+                        newline << (obj->visual.getScale().y) << ' ';
+                        break;
+                    case 6:
+                        newline << (obj->visual.getScale().z) << ' ';
+                        break;
+                    case 7:
+                        newline << (obj->visual.getImage()) << ' ';
                         break;
                     case 8:
                         newline << word;

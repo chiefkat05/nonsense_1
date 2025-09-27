@@ -39,6 +39,8 @@ double delta_time = 0.0,
 double debugSaveTimer = 0.0;
 const double debugSaveCountdown = 5.0;
 templevel editor_level;
+int debug_texture_offset = 0;
+bool debug_editing_texture = false, debug_create_obj_called = false;
 
 glm::vec3 cameraPos = spawnLocation;
 glm::vec3 cameraOffset = glm::vec3(0.0, 0.5, 0.0);
@@ -170,7 +172,7 @@ int main()
             if (debugMode)
             {
                 cameraPos += cameraVelocity * static_cast<float>(tick_time);
-                editor_level.updateSelection(cameraPos, prevCameraPos);
+                editor_level.updateObj(cameraPos, prevCameraPos, debug_texture_offset, debug_editing_texture, debug_create_obj_called);
             }
 
             frame_accumulation -= tick_time;
@@ -316,6 +318,37 @@ void processDebugInput(GLFWwindow *window)
         moveDir.y = -camera_spd;
     }
 
+    static bool textureKeyMinusHeld = false, textureKeyPlusHeld = false;
+    if (!textureKeyMinusHeld && glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS && debug_editing_texture)
+    {
+        textureKeyMinusHeld = true;
+        --debug_texture_offset;
+    }
+    if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_RELEASE)
+    {
+        textureKeyMinusHeld = false;
+    }
+    if (!textureKeyPlusHeld && glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS && debug_editing_texture)
+    {
+        textureKeyPlusHeld = true;
+        ++debug_texture_offset;
+    }
+    if (glfwGetKey(window, GLFW_KEY_E) == GLFW_RELEASE)
+    {
+        textureKeyPlusHeld = false;
+    }
+    static bool addObjButtonHeld = false;
+    debug_create_obj_called = false;
+    if (!addObjButtonHeld && glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS)
+    {
+        debug_create_obj_called = true;
+        addObjButtonHeld = true;
+    }
+    if (glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_RELEASE)
+    {
+        addObjButtonHeld = false;
+    }
+
     cameraVelocity = moveDir;
 
     if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS)
@@ -343,7 +376,7 @@ void processDebugInput(GLFWwindow *window)
     if (rightMouseHeld && glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_2) == GLFW_RELEASE)
     {
         rightMouseHeld = false;
-        editor_level.selectObj(cameraPos, cameraFront);
+        editor_level.selectObj(cameraPos, cameraFront, debug_texture_offset);
     }
 }
 void processInput(GLFWwindow *window)

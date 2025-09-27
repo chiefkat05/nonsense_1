@@ -105,6 +105,10 @@ public:
     {
         return last_position;
     }
+    inline unsigned int getImage()
+    {
+        return textureIndex;
+    }
 
     void Put(glm::vec3 pos = glm::vec3(0.0));
     void Put(double x = 0.0, double y = 0.0, double z = 0.0);
@@ -158,6 +162,10 @@ private:
 public:
     texture *getTextureAtIndex(unsigned int index);
     void addTexture(unsigned int index, const char *path);
+    inline unsigned int getTextureCount()
+    {
+        return texture_count;
+    }
 };
 
 #endif
