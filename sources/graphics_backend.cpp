@@ -336,6 +336,7 @@ model_primitive::model_primitive(model_primitive_type type, bool dyn, bool vis)
     switch (type)
     {
     case MODEL_NONE:
+        is_visible = false;
         std::cout << "What\n";
         break;
     case MODEL_QUAD:

@@ -109,6 +109,10 @@ public:
     {
         return textureIndex;
     }
+    inline glm::vec3 *refPos()
+    {
+        return &position;
+    }
 
     void Put(glm::vec3 pos = glm::vec3(0.0));
     void Put(double x = 0.0, double y = 0.0, double z = 0.0);
@@ -131,6 +135,10 @@ public:
     void SetColor(double r, double g, double b, double a = 1.0)
     {
         color = glm::vec4(r, g, b, a);
+    }
+    void SetVisible(bool v)
+    {
+        is_visible = v;
     }
 
     void draw(shader &_shader, double p_scale, double alpha);

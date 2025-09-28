@@ -21,6 +21,19 @@ typedef struct _aabb2d
     glm::vec2 pos = glm::vec2(0.0), scale = glm::vec2(0.0);
 } aabb2d;
 
+// typedef struct _aabb_octree
+// {
+//     glm::vec3 center = glm::vec3(0.0);
+//     double halfwidth = 0.5;
+//     _aabb_octree *pChild[8];
+//     aabb *pObjectList;
+// } aabb_octree;
+
+// void deleteAABBOctree(aabb_octree *octree);
+
+// void insertObjectIntoAABBOctree(aabb_octree *octree, aabb *obj);
+// void AABBOctreeCollisionHandling(aabb_octree *octree);
+
 bool colliding(aabb first, aabb second);
 bool colliding(raycast ray, aabb box, glm::vec3 &point);
 bool colliding(aabb2d box, glm::vec2 point);

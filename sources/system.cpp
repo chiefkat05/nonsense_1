@@ -496,6 +496,7 @@ void game::setup_level(const char *level_path)
     }
 
     level_file.close();
+    current_level.deleteOctree();
     current_level = new_level;
 }
 
@@ -507,11 +508,10 @@ void game::update_level(double tick_time, glm::vec3 &plPos, glm::vec3 &plLastPos
         std::string new_level_path = current_level.setLevel;
         current_level.reset();
         setup_level(new_level_path.c_str());
-        plPos = spawnLocation;
         return;
     }
     current_level.updateTriggerChecks(plCol, plPos, camDir, mousePos, mouseClicked);
-    current_level.updateTriggerResponses(tick_time);
+    current_level.updateTriggerResponses(plPos, tick_time);
     if (!debug)
         current_level.updatePlayerPhysics(tick_time, plPos, plLastPos, plVel, plCol, onG);
 }
@@ -606,79 +606,208 @@ void level::drawLevel(shader &shad, shader &shad_ui, double alpha) // please add
     {
         ui_objects[i].visual.draw(shad_ui, ui_pixel_scale, alpha);
     }
+    if (tree != nullptr)
+        tree->draw(shad);
 }
 
-void level::updatePlayerPhysics(double tick_time, glm::vec3 &player_position, glm::vec3 &player_last_position, glm::vec3 &player_velocity, aabb &player_collider, bool &on_floor)
+void octree::collisionTest(level_object *pPlayer, bool &on_floor)
+{
+    const int max_depth = 8;
+    static octree *ancestor_stack[max_depth];
+    static int depth = 0;
+
+    ancestor_stack[depth] = this;
+    ++depth;
+    if (depth >= max_depth)
+    {
+        --depth;
+        return;
+    }
+    // std::cout << depth << " / " << max_depth << " \n";
+
+    for (int i = 0; i < depth; ++i)
+    {
+        level_object *objA = nullptr, *objB = nullptr;
+        for (objA = ancestor_stack[i]->pObjList; objA != nullptr; objA = objA->pNextObject)
+        {
+            // std::cout << pObjList << ", " << objA << ", " << ancestor_stack[i]->pObjList << " huh\n";
+            for (objB = pObjList; objB != nullptr; objB = objB->pNextObject)
+            {
+                if (objA == objB || objA->type == OBJ_PASSTHROUGH || objB->type == OBJ_PASSTHROUGH || !objA->visual.isDynamic() || objA != pPlayer)
+                    continue;
+
+                // if (colliding(objA->collider, objB->collider))
+                // {
+                //     // std::cout << objA->collider.pos.x << ", " << objA->collider.pos.y << ", " << objA->collider.pos.z << " vs " << objB->collider.pos.x << ", " << objB->collider.pos.y << ", " << objB->collider.pos.z << " collision!\n";
+                //     // objA->visual.Put(objA->visual.getLastPosition());
+                //     // objA->velocity = -objA->velocity;
+                // }
+                collision c = normal_collision(&objA->collider, &objB->collider, objA->velocity, objB->velocity);
+                if (c.hit)
+                {
+                    for (int i = 0; i < 3; ++i)
+                    {
+                        if (c.hitLocation[i] != objA->collider.pos[i])
+                        {
+                            objA->visual.getPos()[i] = c.hitLocation[i];
+                        }
+                    }
+                    putAABB(&objA->collider, objA->visual.getPos());
+                    for (int j = 0; j < 3; ++j)
+                    {
+                        if (j == 1 && c.normal[j] > 0)
+                        {
+                            on_floor = true;
+                            // objA->visual.getPos() += (objects[i].visual.getPos() - objects[i].visual.getLastPosition());
+                        }
+                        if (c.normal[j] < 0 && objA->velocity[j] > 0.0)
+                        {
+                            objA->velocity[j] = 0.0;
+                        }
+                        if (c.normal[j] > 0 && objA->velocity[j] < 0.0)
+                        {
+                            objA->velocity[j] = 0.0;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    for (int i = 0; i < 8; ++i)
+    {
+        if (pChild[i] != nullptr)
+        {
+            pChild[i]->collisionTest(pPlayer, on_floor);
+        }
+    }
+    --depth;
+}
+
+void level::updatePlayerPhysics(double tick_time, glm::vec3 &plPos, glm::vec3 &player_last_position, glm::vec3 &player_velocity, aabb &player_collider, bool &on_floor)
 {
     if (getObjectCount() == 0)
     {
         // std::cout << "no object levels.\n";
         return;
     }
-    if (player_position.y < -25.0) // needs to be taken out in favor of a real looping mechanic??
-    {
-        player_position = glm::vec3(0.0, 25.0, 0.0);
-    }
+    // if (plPos.y < -25.0) // needs to be taken out in favor of a real looping mechanic??
+    // {
+    //     plPos = glm::vec3(0.0, 25.0, 0.0);
+    // }
 
     on_floor = false;
 
-    putAABB(&player_collider, player_position + player_velocity * (float)tick_time); // future collision
-    for (int i = 0; i < objects.size(); ++i)
-    {
-        if (objects[i].type == OBJ_PASSTHROUGH)
-            continue;
+    static level_object plObject;
+    static model_primitive plModel(MODEL_NONE);
 
-        objects[i].collider.pos = objects[i].visual.getPos();
-        objects[i].collider.scale = objects[i].visual.getScale();
-        collision col = normal_collision(&player_collider, &objects[i].collider, player_velocity * static_cast<float>(tick_time),
-                                         (objects[i].visual.getPos() - objects[i].visual.getLastPosition()) * static_cast<float>(tick_time));
-        if (col.hit)
-        {
-            for (int i = 0; i < 3; ++i)
-            {
-                if (col.hitLocation[i] != player_collider.pos[i])
-                {
-                    player_position[i] = col.hitLocation[i];
-                }
-            }
-            putAABB(&player_collider, player_position);
-            for (int j = 0; j < 3; ++j)
-            {
-                if (j == 1 && col.normal[j] > 0)
-                {
-                    // if (player_velocity.y < 0.0)
-                    // {
-                    //     ma_sound_start(&landsfx);
-                    // }
-                    on_floor = true;
-                    player_position += (objects[i].visual.getPos() - objects[i].visual.getLastPosition());
-                }
-                if (col.normal[j] < 0 && player_velocity[j] > 0.0)
-                {
-                    player_velocity[j] = 0.0;
-                }
-                if (col.normal[j] > 0 && player_velocity[j] < 0.0)
-                {
-                    player_velocity[j] = 0.0;
-                }
-            }
-        }
+    // putAABB(&player_collider, plPos + player_velocity * (float)tick_time); // future collision
+    putAABB(&plObject.collider, plPos + player_velocity * (float)tick_time); // future collision
+    plModel.Put(plPos);
+    plObject.velocity = player_velocity;
+    static bool treeMade = false;
+    if (tree == nullptr)
+    {
+        treeMade = false;
     }
 
-    if (!on_floor)
-        player_velocity.y += 0.5 * gravity * tick_time;
+    if (!treeMade)
+    {
+        tree = new octree(glm::vec3(0.0), 1000.0);
+        for (int i = 0; i < objects.size(); ++i)
+        {
+            tree->insert(&objects[i]);
+        }
+        plObject.visual = plModel;
+        plObject.collider = player_collider;
+        plObject.type = OBJ_SOLID;
+        plObject.visual.makeDynamic();
+        tree->insert(&plObject);
 
-    player_position.x += player_velocity.x * tick_time;
-    player_position.y += player_velocity.y * tick_time;
-    player_position.z += player_velocity.z * tick_time;
+        treeMade = true;
+    }
 
-    player_velocity.x = 0.0;
-    player_velocity.z = 0.0;
+    tree->collisionTest(&plObject, on_floor);
+    player_velocity = plObject.velocity;
+
     if (!on_floor)
-        player_velocity.y += 0.5 * gravity * tick_time;
+        plObject.velocity.y += 0.5 * gravity * tick_time;
+
+    plObject.visual.refPos()->x += plObject.velocity.x * tick_time;
+    plObject.visual.refPos()->y += plObject.velocity.y * tick_time;
+    plObject.visual.refPos()->z += plObject.velocity.z * tick_time;
+
+    plObject.velocity.x = 0.0;
+    plObject.velocity.z = 0.0;
+    if (!on_floor)
+        plObject.velocity.y += 0.5 * gravity * tick_time;
+
+    plPos = plObject.visual.getPos();
+    putAABB(&player_collider, plPos);
+    player_velocity = plObject.velocity;
+    // player_collider = plObject.collider;
+
+    // tree->clear();
+    // delete tree;
+
+    // for (int i = 0; i < objects.size(); ++i)
+    // {
+    //     if (objects[i].type == OBJ_PASSTHROUGH)
+    //         continue;
+
+    //     objects[i].collider.pos = objects[i].visual.getPos();
+    //     objects[i].collider.scale = objects[i].visual.getScale();
+    //     collision col = normal_collision(&player_collider, &objects[i].collider, player_velocity * static_cast<float>(tick_time),
+    //                                      (objects[i].visual.getPos() - objects[i].visual.getLastPosition()) * static_cast<float>(tick_time));
+    //     if (col.hit)
+    //     {
+    //         for (int i = 0; i < 3; ++i)
+    //         {
+    //             if (col.hitLocation[i] != player_collider.pos[i])
+    //             {
+    //                 player_position[i] = col.hitLocation[i];
+    //             }
+    //         }
+    //         putAABB(&player_collider, player_position);
+    //         for (int j = 0; j < 3; ++j)
+    //         {
+    //             if (j == 1 && col.normal[j] > 0)
+    //             {
+    //                 // if (player_velocity.y < 0.0)
+    //                 // {
+    //                 //     ma_sound_start(&landsfx);
+    //                 // }
+    //                 on_floor = true;
+    //                 player_position += (objects[i].visual.getPos() - objects[i].visual.getLastPosition());
+    //             }
+    //             if (col.normal[j] < 0 && player_velocity[j] > 0.0)
+    //             {
+    //                 player_velocity[j] = 0.0;
+    //             }
+    //             if (col.normal[j] > 0 && player_velocity[j] < 0.0)
+    //             {
+    //                 player_velocity[j] = 0.0;
+    //             }
+    //         }
+    //     }
+    // }
+
+    // if (!on_floor)
+    //     player_velocity.y += 0.5 * gravity * tick_time;
+
+    // plPos.x += player_velocity.x * tick_time;
+    // plPos.y += player_velocity.y * tick_time;
+    // plPos.z += player_velocity.z * tick_time;
+
+    // player_velocity.x = 0.0;
+    // player_velocity.z = 0.0;
+    // if (!on_floor)
+    //     player_velocity.y += 0.5 * gravity * tick_time;
+
+    // plPos = plObject.visual.getPos();
 }
 
-void level::updateTriggerChecks(aabb &playerCollider, glm::vec3 &camPos, glm::vec3 &camDir, glm::vec2 &mousePos, bool &mouseClicked)
+void level::updateTriggerChecks(aabb &playerCollider, glm::vec3 &plPos, glm::vec3 &camDir, glm::vec2 &mousePos, bool &mouseClicked)
 {
     for (int i = 0; i < getTriggerCount(); ++i)
     {
@@ -713,7 +842,7 @@ void level::updateTriggerChecks(aabb &playerCollider, glm::vec3 &camPos, glm::ve
             break;
         case TCAUSE_LOOKAT:
         {
-            raycast ray = {camPos + glm::vec3(0.0, 0.5, 0.0), glm::normalize(camDir)};
+            raycast ray = {plPos + glm::vec3(0.0, 0.5, 0.0), glm::normalize(camDir)};
             glm::vec3 hitPos = glm::vec3(0.0);
             bool raycasthit = colliding(ray, objects[triggers[i].objIndex].collider, hitPos);
 
@@ -764,7 +893,7 @@ void level::updateTriggerChecks(aabb &playerCollider, glm::vec3 &camPos, glm::ve
 
     triggerGameStartedCheck = true;
 }
-void level::updateTriggerResponses(double tick_time)
+void level::updateTriggerResponses(glm::vec3 &plPos, double tick_time)
 {
     audio_player_struct *audio_player = audio_player_struct::getInstance();
 
@@ -812,7 +941,7 @@ void level::updateTriggerResponses(double tick_time)
             if (triggers[i].time == triggers[i].timerDown || triggers[i].time == 0.0)
             {
                 setLevel = triggers[i].newLevel;
-                triggers[i].triggered = false;
+                plPos = spawnLocation;
             }
             break;
         case TTYPE_PLAYSOUND:
@@ -845,4 +974,11 @@ void level::updateTriggerResponses(double tick_time)
             triggers[i].timerDown -= 1.0 * tick_time;
         }
     }
+}
+
+void octree::draw(shader &shad)
+{
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    visual.draw(shad, pixel_scale, 1.0);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 }

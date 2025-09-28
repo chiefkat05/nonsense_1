@@ -133,6 +133,7 @@ int main()
     allTextures.addTexture(3, "./img/sign.png");
     allTextures.addTexture(4, "./img/death.png");
     allTextures.addTexture(5, "./img/playbutton.png");
+
     aabb plcol = makeAABB(glm::vec3(0.0), glm::vec3(0.5, 1.75, 0.5));
 
     bool testbool = false;
@@ -221,6 +222,7 @@ int main()
     }
 #endif
 
+    mainGame.getCurrentLevel()->deleteOctree();
     editor_level.removeTemp();
     glfwTerminate();
 }

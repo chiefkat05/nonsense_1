@@ -62,6 +62,81 @@ struct level_object
     aabb collider;
     object_type type;
     unsigned int lineIndex = 0;
+    glm::vec3 velocity = glm::vec3(0.0);
+    level_object *pNextObject = nullptr;
+};
+
+struct octree
+{
+    glm::vec3 center = glm::vec3(0.0);
+    double halfwidth = 1000.0;
+    octree *pChild[8] = {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr};
+    level_object *pObjList = nullptr;
+    model_primitive visual;
+
+    void clear()
+    {
+        for (int i = 0; i < 8; ++i)
+        {
+            if (pChild[i] == nullptr)
+                continue;
+
+            pChild[i]->clear();
+            delete pChild[i];
+        }
+    }
+
+    octree(glm::vec3 pos, double hw) : center(pos), halfwidth(hw)
+    {
+        visual.Put(pos);
+        visual.Scale(hw);
+        visual.Image(4);
+        visual.SetColor(1.0, 0.0, 0.0, 0.5);
+    }
+    void draw(shader &shad);
+    void buildChildAtIndex(unsigned int index)
+    {
+        double step = halfwidth * 0.5;
+        glm::vec3 childPos = glm::vec3(((index & 1) ? step : -step), ((index & 2) ? step : -step), ((index & 4) ? step : -step));
+        pChild[index] = new octree(childPos, step);
+    }
+    void insert(level_object *obj)
+    {
+        unsigned int index = 0;
+        bool straddle = false;
+
+        for (int i = 0; i < 3; ++i)
+        {
+            double delta = obj->visual.getPos()[i] - center[i];
+            if (std::abs(delta) <= obj->visual.getScale()[i])
+            {
+                straddle = true;
+                break;
+            }
+            if (delta > 0.0)
+                index |= (1 << i);
+        }
+        if (!straddle)
+        {
+            if (pChild[index] == nullptr)
+            {
+                buildChildAtIndex(index);
+            }
+            pChild[index]->insert(obj);
+        }
+        else
+        {
+            obj->pNextObject = pObjList;
+            pObjList = obj;
+        }
+    }
+    void collisionTest(level_object *pPlayer, bool &on_floor);
+
+    void removeObj(level_object *pObject)
+    {
+        // copy pObject->next into tempObject
+        // prevObject->next = pObject is changed to prevObject->next = tempObject
+    }
 };
 
 struct level_trigger // I think there could be a less complicated way of doing this
@@ -133,6 +208,7 @@ private:
     unsigned int lineCount = 0;
 
     double gravity = -9.81;
+    octree *tree = nullptr;
 
 public:
     std::string setLevel = "";
@@ -177,6 +253,13 @@ public:
     {
         ++lineCount;
     }
+    void deleteOctree()
+    {
+        if (tree == nullptr)
+            return;
+        tree->clear();
+        delete tree;
+    }
 
     void addObject(model_primitive_type model_type, glm::vec3 pos, glm::vec3 scale, unsigned int texture, object_type type, bool visible = true);
     void addVariable(std::string id, double value);
@@ -194,9 +277,9 @@ public:
 
     void reset();
     void drawLevel(shader &shad, shader &shad_ui, double alpha);
-    void updatePlayerPhysics(double tick_time, glm::vec3 &player_position, glm::vec3 &player_last_position, glm::vec3 &player_velocity, aabb &player_collider, bool &on_floor);
-    void updateTriggerChecks(aabb &playerCollider, glm::vec3 &camPos, glm::vec3 &camDir, glm::vec2 &mousePos, bool &mouseClicked);
-    void updateTriggerResponses(double tick_time);
+    void updatePlayerPhysics(double tick_time, glm::vec3 &plPos, glm::vec3 &player_last_position, glm::vec3 &player_velocity, aabb &player_collider, bool &on_floor);
+    void updateTriggerChecks(aabb &playerCollider, glm::vec3 &plPos, glm::vec3 &camDir, glm::vec2 &mousePos, bool &mouseClicked);
+    void updateTriggerResponses(glm::vec3 &plPos, double tick_time);
 };
 
 class game
