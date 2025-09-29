@@ -66,6 +66,8 @@ struct level_object
     level_object *pNextObject = nullptr;
 };
 
+extern level_object *globalPlayerPointer;
+constexpr int max_octree_depth = 40;
 struct octree
 {
     glm::vec3 center = glm::vec3(0.0);
@@ -73,6 +75,7 @@ struct octree
     octree *pChild[8] = {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr};
     level_object *pObjList = nullptr;
     model_primitive visual;
+    unsigned int depth = 0;
 
     void clear()
     {
@@ -81,30 +84,55 @@ struct octree
             if (pChild[i] == nullptr)
                 continue;
 
-            pChild[i]->clear();
+            // pChild[i]->clear();
             delete pChild[i];
+            pChild[i] == nullptr;
         }
     }
 
+    octree() {}
     octree(glm::vec3 pos, double hw) : center(pos), halfwidth(hw)
     {
+        visual = model_primitive(MODEL_CUBE, true, true);
         visual.Put(pos);
-        visual.Scale(hw);
-        visual.Image(4);
-        visual.SetColor(1.0, 0.0, 0.0, 0.5);
+        visual.Scale(hw, hw, hw);
+        visual.Image(2);
+        visual.SetColor(1.0, 1.0, 1.0, 1.0);
+        visual.makeDynamic();
     }
-    void draw(shader &shad);
+    void draw(shader &shad, double alpha_time);
     void buildChildAtIndex(unsigned int index)
     {
         double step = halfwidth * 0.5;
-        glm::vec3 childPos = glm::vec3(((index & 1) ? step : -step), ((index & 2) ? step : -step), ((index & 4) ? step : -step));
-        pChild[index] = new octree(childPos, step);
+        glm::vec3 offset = glm::vec3(-step, -step, -step);
+        if (index & 1)
+            offset.x = step;
+        if (index & 2)
+            offset.y = step;
+        if (index & 4)
+            offset.z = step;
+
+        pChild[index] = new octree(center + offset * 0.5f, step);
     }
     void insert(level_object *obj)
     {
+        if (!colliding(obj->collider, aabb({center, glm::vec3(halfwidth)})))
+        {
+            return;
+        }
         unsigned int index = 0;
         bool straddle = false;
+        // ++depth;
+        // if (depth >= max_octree_depth) // tis is just defense against low max_depth levels. Please lower the max depth and re-implement this when you're done testing!
+        // {
+        //     straddle = true;
+        //     obj->pNextObject = pObjList;
+        //     pObjList = obj;
+        //     --depth;
+        //     return;
+        // }
 
+        glm::vec3 offset = glm::vec3(0.0);
         for (int i = 0; i < 3; ++i)
         {
             double delta = obj->visual.getPos()[i] - center[i];
@@ -128,14 +156,37 @@ struct octree
         {
             obj->pNextObject = pObjList;
             pObjList = obj;
+            // std::cout << "object inserted at child position " << center.x << ", " << center.y << ", " << center.z << " and depth " << depth << std::endl; // !!!! center position should not be 0,0,0??? The fuck???
+            // --depth;
         }
     }
     void collisionTest(level_object *pPlayer, bool &on_floor);
 
+    void deleteObjectFromList(level_object *firstObject, level_object *deletionObject)
+    {
+        if (firstObject == nullptr)
+        {
+            return;
+        }
+        if (firstObject == deletionObject)
+        {
+            firstObject = firstObject->pNextObject;
+        }
+        deleteObjectFromList(firstObject->pNextObject, deletionObject);
+    }
     void removeObj(level_object *pObject)
     {
         // copy pObject->next into tempObject
         // prevObject->next = pObject is changed to prevObject->next = tempObject
+        deleteObjectFromList(pObjList, pObject);
+
+        for (int i = 0; i < 8; ++i)
+        {
+            if (pChild[i] != nullptr)
+            {
+                pChild[i]->removeObj(pObject);
+            }
+        }
     }
 };
 
@@ -209,6 +260,7 @@ private:
 
     double gravity = -9.81;
     octree *tree = nullptr;
+    // octree tree;
 
 public:
     std::string setLevel = "";
@@ -259,6 +311,7 @@ public:
             return;
         tree->clear();
         delete tree;
+        tree = nullptr;
     }
 
     void addObject(model_primitive_type model_type, glm::vec3 pos, glm::vec3 scale, unsigned int texture, object_type type, bool visible = true);

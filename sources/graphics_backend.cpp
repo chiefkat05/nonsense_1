@@ -337,7 +337,6 @@ model_primitive::model_primitive(model_primitive_type type, bool dyn, bool vis)
     {
     case MODEL_NONE:
         is_visible = false;
-        std::cout << "What\n";
         break;
     case MODEL_QUAD:
         glBufferData(GL_ARRAY_BUFFER, sizeof(quad_vertices), quad_vertices, GL_STATIC_DRAW);

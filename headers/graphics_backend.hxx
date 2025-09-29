@@ -105,6 +105,10 @@ public:
     {
         return last_position;
     }
+    inline glm::vec3 getLastScale()
+    {
+        return last_scale;
+    }
     inline unsigned int getImage()
     {
         return textureIndex;

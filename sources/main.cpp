@@ -25,7 +25,7 @@ extern const unsigned int window_height = 420;
 const double tick_time = 0.01;
 const unsigned int frameUpdateLimit = 60;
 unsigned int frameUpdateCount = 0;
-extern const glm::vec3 spawnLocation = glm::vec3(0.0, 0.0, 3.0);
+extern const glm::vec3 spawnLocation = glm::vec3(0, 0, -3.0);
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 void mouse_callback(GLFWwindow *window, double xpos, double ypos);
@@ -118,7 +118,7 @@ int main()
     glm::mat4 view = glm::mat4(1.0f);
     view = glm::translate(view, glm::vec3(0.0f, 0.0f, -4.0f));
 
-    glm::mat4 proj = glm::perspective(glm::radians(65.0f), (float)window_width / (float)window_height, 0.1f, 100.0f);
+    glm::mat4 proj = glm::perspective(glm::radians(65.0f), (float)window_width / (float)window_height, 0.1f, 1000.0f);
     shader_main.setMat4("projection", proj);
 
     shader_ui.use();
@@ -134,7 +134,8 @@ int main()
     allTextures.addTexture(4, "./img/death.png");
     allTextures.addTexture(5, "./img/playbutton.png");
 
-    aabb plcol = makeAABB(glm::vec3(0.0), glm::vec3(0.5, 1.75, 0.5));
+    // aabb plcol = makeAABB(glm::vec3(0.0), glm::vec3(0.5, 1.75, 0.5));
+    level_object player_object; // MAKE THIS YE instead of camearaPos and stuff use this position
 
     bool testbool = false;
 
