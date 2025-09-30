@@ -19,7 +19,7 @@ void main()
 	Normals = vec3(aNormals.x, aNormals.y, aNormals.z);
 	if (Normals.x != 0.0)
 	{
-		TexCoords = vec2(aTexCoords.x * texture_scale.y * texture_pixel_scale.x, aTexCoords.y * texture_scale.z * texture_pixel_scale.y);
+		TexCoords = vec2(aTexCoords.x * texture_scale.z * texture_pixel_scale.x, aTexCoords.y * texture_scale.y * texture_pixel_scale.y);
 	}
 	if (Normals.y != 0.0)
 	{

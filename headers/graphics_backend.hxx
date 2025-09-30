@@ -117,6 +117,10 @@ public:
     {
         return &position;
     }
+    inline glm::vec3 *refLastPos()
+    {
+        return &last_position;
+    }
 
     void Put(glm::vec3 pos = glm::vec3(0.0));
     void Put(double x = 0.0, double y = 0.0, double z = 0.0);

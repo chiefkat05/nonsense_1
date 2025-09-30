@@ -56,6 +56,8 @@ enum level_command_type
     LCOMM_AUDIO
 };
 
+struct octree;
+
 struct level_object
 {
     model_primitive visual;
@@ -64,9 +66,25 @@ struct level_object
     unsigned int lineIndex = 0;
     glm::vec3 velocity = glm::vec3(0.0);
     level_object *pNextObject = nullptr;
+    octree *pOctree = nullptr;
+
+    void Put(glm::vec3 new_pos)
+    {
+        visual.Put(new_pos);
+        collider.pos = new_pos;
+    }
+    void Put(double x, double y, double z)
+    {
+        visual.Put(x, y, z);
+        collider.pos = glm::vec3(x, y, z);
+    }
+    void SetScale(glm::vec3 new_scale)
+    {
+        visual.Scale(new_scale);
+        collider.scale = new_scale;
+    }
 };
 
-extern level_object *globalPlayerPointer;
 constexpr int max_octree_depth = 40;
 struct octree
 {
@@ -76,6 +94,7 @@ struct octree
     level_object *pObjList = nullptr;
     model_primitive visual;
     unsigned int depth = 0;
+    bool leafnode = true;
 
     void clear()
     {
@@ -84,9 +103,9 @@ struct octree
             if (pChild[i] == nullptr)
                 continue;
 
-            // pChild[i]->clear();
+            pChild[i]->clear();
             delete pChild[i];
-            pChild[i] == nullptr;
+            pChild[i] = nullptr;
         }
     }
 
@@ -113,6 +132,7 @@ struct octree
             offset.z = step;
 
         pChild[index] = new octree(center + offset * 0.5f, step);
+        leafnode = false;
     }
     void insert(level_object *obj)
     {
@@ -156,36 +176,42 @@ struct octree
         {
             obj->pNextObject = pObjList;
             pObjList = obj;
-            // std::cout << "object inserted at child position " << center.x << ", " << center.y << ", " << center.z << " and depth " << depth << std::endl; // !!!! center position should not be 0,0,0??? The fuck???
+            obj->pOctree = this;
             // --depth;
         }
     }
     void collisionTest(level_object *pPlayer, bool &on_floor);
 
-    void deleteObjectFromList(level_object *firstObject, level_object *deletionObject)
+    bool deleteObject(level_object *deletionObject)
     {
-        if (firstObject == nullptr)
+        // first case
+        if (pObjList == deletionObject)
         {
-            return;
+            pObjList = pObjList->pNextObject;
+            return true;
         }
-        if (firstObject == deletionObject)
-        {
-            firstObject = firstObject->pNextObject;
-        }
-        deleteObjectFromList(firstObject->pNextObject, deletionObject);
+        return false;
     }
-    void removeObj(level_object *pObject)
-    {
-        // copy pObject->next into tempObject
-        // prevObject->next = pObject is changed to prevObject->next = tempObject
-        deleteObjectFromList(pObjList, pObject);
 
+    void cleanUpEmptyChildren()
+    {
+        bool anyChildren = false;
         for (int i = 0; i < 8; ++i)
         {
-            if (pChild[i] != nullptr)
+            if (pChild[i] != nullptr) // only delete if leafnode and no objlst
             {
-                pChild[i]->removeObj(pObject);
+                anyChildren = true;
+                pChild[i]->cleanUpEmptyChildren();
+                if (pChild[i]->leafnode && pChild[i]->pObjList == nullptr)
+                {
+                    delete pChild[i];
+                    pChild[i] = nullptr;
+                }
             }
+        }
+        if (!anyChildren)
+        {
+            leafnode = true;
         }
     }
 };
@@ -260,6 +286,7 @@ private:
 
     double gravity = -9.81;
     octree *tree = nullptr;
+    bool treeMade = false;
     // octree tree;
 
 public:
@@ -315,6 +342,7 @@ public:
     }
 
     void addObject(model_primitive_type model_type, glm::vec3 pos, glm::vec3 scale, unsigned int texture, object_type type, bool visible = true);
+    void removeObjectAtIndex(unsigned int index);
     void addVariable(std::string id, double value);
     void addUIObject(glm::vec2 pos, glm::vec2 scale, unsigned int texture);
     void addAudio(std::string id, std::string path);
@@ -329,10 +357,10 @@ public:
     void setTriggerLevelResponse(std::string newLevel, double time);
 
     void reset();
-    void drawLevel(shader &shad, shader &shad_ui, double alpha);
-    void updatePlayerPhysics(double tick_time, glm::vec3 &plPos, glm::vec3 &player_last_position, glm::vec3 &player_velocity, aabb &player_collider, bool &on_floor);
-    void updateTriggerChecks(aabb &playerCollider, glm::vec3 &plPos, glm::vec3 &camDir, glm::vec2 &mousePos, bool &mouseClicked);
-    void updateTriggerResponses(glm::vec3 &plPos, double tick_time);
+    void drawLevel(shader &shad, shader &shad_ui, bool debugMode, double alpha);
+    void updatePlayerPhysics(double tick_time, level_object &plObject, bool &on_floor);
+    void updateTriggerChecks(level_object &plObject, glm::vec3 &camDir, glm::vec2 &mousePos, bool &mouseClicked);
+    void updateTriggerResponses(level_object &plObject, double tick_time);
 };
 
 class game
@@ -345,9 +373,8 @@ private:
 public:
     void setup_level(const char *level_path);
 
-    void update_level(double tick_time, glm::vec3 &plPos, glm::vec3 &plLastPos, glm::vec3 &plVel, glm::vec2 &mousePos,
-                      bool &mouseClicked, aabb &plCol, glm::vec3 camDir, bool &onG, bool debug = false);
-    void draw_level(shader &shad, shader &shad_ui, double alpha);
+    void update_level(double tick_time, level_object &plObject, glm::vec2 &mousePos, bool &mouseClicked, glm::vec3 camDir, bool &onG, bool debug = false);
+    void draw_level(shader &shad, shader &shad_ui, bool debugMode, double alpha);
     std::string current_level_path = "";
 
     inline level *getCurrentLevel()

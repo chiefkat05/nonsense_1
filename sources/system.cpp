@@ -162,7 +162,7 @@ void game::setup_level(const char *level_path)
                     ui_texture = std::stoi(word);
 
                     new_level.addUIObject(ui_pos, ui_scale, ui_texture);
-                    new_level.getUIAtIndex(new_level.getUICount() - 1)->lineIndex = lineNum;
+                    new_level.getUIAtIndex(new_level.getUICount() - 1)->lineIndex = lineNum - 1;
                     making = LCOMM_NONE;
                     step = -1;
                     break;
@@ -233,7 +233,7 @@ void game::setup_level(const char *level_path)
                 case 1:
                     value = std::stod(word);
                     new_level.addVariable(sID, value);
-                    new_level.getVariableAtIndex(new_level.getVariableCount() - 1)->lineIndex = lineNum;
+                    new_level.getVariableAtIndex(new_level.getVariableCount() - 1)->lineIndex = lineNum - 1;
                     making = LCOMM_NONE;
                     step = -1;
                     break;
@@ -482,7 +482,7 @@ void game::setup_level(const char *level_path)
                     default:
                         break;
                     }
-                    new_level.getTriggerAtIndex(new_level.getTriggerCount() - 1)->lineIndex = lineNum;
+                    new_level.getTriggerAtIndex(new_level.getTriggerCount() - 1)->lineIndex = lineNum - 1;
                     making = LCOMM_NONE;
                     step = -1;
                     break;
@@ -500,24 +500,24 @@ void game::setup_level(const char *level_path)
     current_level = new_level;
 }
 
-void game::update_level(double tick_time, glm::vec3 &plPos, glm::vec3 &plLastPos, glm::vec3 &plVel,
-                        glm::vec2 &mousePos, bool &mouseClicked, aabb &plCol, glm::vec3 camDir, bool &onG, bool debug)
+void game::update_level(double tick_time, level_object &plObject, glm::vec2 &mousePos, bool &mouseClicked, glm::vec3 camDir, bool &onG, bool debug)
 {
     if (current_level.setLevel != "")
     {
         std::string new_level_path = current_level.setLevel;
         current_level.reset();
         setup_level(new_level_path.c_str());
+        // plObject.Put(spawnLocation);
         return;
     }
-    current_level.updateTriggerChecks(plCol, plPos, camDir, mousePos, mouseClicked);
-    current_level.updateTriggerResponses(plPos, tick_time);
+    current_level.updateTriggerChecks(plObject, camDir, mousePos, mouseClicked);
+    current_level.updateTriggerResponses(plObject, tick_time);
     if (!debug)
-        current_level.updatePlayerPhysics(tick_time, plPos, plLastPos, plVel, plCol, onG);
+        current_level.updatePlayerPhysics(tick_time, plObject, onG);
 }
-void game::draw_level(shader &shad, shader &shad_ui, double alpha)
+void game::draw_level(shader &shad, shader &shad_ui, bool debugMode, double alpha)
 {
-    current_level.drawLevel(shad, shad_ui, alpha);
+    current_level.drawLevel(shad, shad_ui, debugMode, alpha);
 }
 
 void level::addObject(model_primitive_type model_type, glm::vec3 pos, glm::vec3 scale, unsigned int texture, object_type type, bool visible)
@@ -529,6 +529,17 @@ void level::addObject(model_primitive_type model_type, glm::vec3 pos, glm::vec3 
     c.Image(texture);
     aabb col = makeAABB(pos, scale);
     objects.push_back({c, col, type});
+}
+void level::removeObjectAtIndex(unsigned int index)
+{
+    for (int i = index; i < objects.size(); ++i)
+    {
+        objects[i].lineIndex -= 1;
+    }
+    objects.erase(objects.begin() + index); // does this even work?
+
+    deleteOctree();
+    treeMade = false;
 }
 void level::addVariable(std::string id, double value)
 {
@@ -588,7 +599,6 @@ void level::setTriggerLevelResponse(std::string levelStr, double time)
 void level::reset()
 {
     // insert any existing level global variables back to game list here
-
     objects.clear();
     ui_objects.clear();
     variables.clear();
@@ -596,7 +606,7 @@ void level::reset()
     triggerGameStartedCheck = false;
     setLevel = "";
 }
-void level::drawLevel(shader &shad, shader &shad_ui, double alpha) // please add multi-shader support
+void level::drawLevel(shader &shad, shader &shad_ui, bool debugMode, double alpha) // please add multi-shader support
 {
     for (int i = 0; i < getObjectCount(); ++i)
     {
@@ -606,13 +616,53 @@ void level::drawLevel(shader &shad, shader &shad_ui, double alpha) // please add
     {
         ui_objects[i].visual.draw(shad_ui, ui_pixel_scale, alpha);
     }
-    // if (tree != nullptr)
-    // {
-    //     tree->draw(shad, alpha);
-    // }
-    // tree.draw(shad, alpha);
+    if (tree != nullptr && debugMode)
+    {
+        tree->draw(shad, alpha);
+    }
 }
 
+void collisionResolution(level_object *objA, level_object *objB, bool &on_floor)
+{
+    collision c = normal_collision(&objA->collider, &objB->collider, objA->velocity, objB->velocity);
+    if (c.hit)
+    {
+        // uses collider.pos instead of visual.getPos() because collider.pos is the most updated at this moment (it's using future velocity movement, remember?)
+        // if we compare hitLocation to visual.getPos(), then it will always return true for every axis since visualPos is not at that location and
+        // the object will be pulled forward to the new hitPosition calculated in relation to the colliderPosition.
+        if (c.hitLocation.x != objA->collider.pos.x)
+        {
+            objA->visual.refPos()->x = c.hitLocation.x;
+            objA->visual.refLastPos()->x = c.hitLocation.x;
+        }
+        if (c.hitLocation.y != objA->collider.pos.y)
+        {
+            objA->visual.refPos()->y = c.hitLocation.y;
+            objA->visual.refLastPos()->y = c.hitLocation.y;
+        }
+        if (c.hitLocation.z != objA->collider.pos.z)
+        {
+            objA->visual.refPos()->z = c.hitLocation.z;
+            objA->visual.refLastPos()->z = c.hitLocation.z;
+        }
+        putAABB(&objA->collider, objA->visual.getPos());
+        for (int j = 0; j < 3; ++j)
+        {
+            if (j == 1 && c.normal[j] > 0)
+            {
+                on_floor = true;
+            }
+            if (c.normal[j] < 0 && objA->velocity[j] > 0.0)
+            {
+                objA->velocity[j] = 0.0;
+            }
+            if (c.normal[j] > 0 && objA->velocity[j] < 0.0)
+            {
+                objA->velocity[j] = 0.0;
+            }
+        }
+    }
+}
 void octree::collisionTest(level_object *pPlayer, bool &on_floor)
 {
     static octree *ancestor_stack[max_octree_depth];
@@ -633,75 +683,15 @@ void octree::collisionTest(level_object *pPlayer, bool &on_floor)
         {
             for (objB = pObjList; objB != nullptr; objB = objB->pNextObject)
             {
-                if (objA == objB)
+                if (objA == objB || objA != pPlayer && objB != pPlayer || objB->type == OBJ_PASSTHROUGH || objA->type == OBJ_PASSTHROUGH)
                     continue;
-                // if (objA == objB || objA->type == OBJ_PASSTHROUGH || objB->type == OBJ_PASSTHROUGH || !objA->visual.isDynamic())
-                //     continue;
-                // if (objB == globalPlayerPointer)
-                // {
-                // level_object *tempObj = objB;
-                // objB = objA;
-                // objA = tempObj;
-                // }
-                if (objA == globalPlayerPointer)
+                if (objA == pPlayer)
                 {
-                    collision c = normal_collision(&objA->collider, &objB->collider, objA->velocity, objB->velocity);
-                    if (c.hit)
-                    {
-                        for (int i = 0; i < 3; ++i)
-                        {
-                            if (c.hitLocation[i] != objA->collider.pos[i])
-                            {
-                                objA->visual.getPos()[i] = c.hitLocation[i];
-                            }
-                        }
-                        putAABB(&objA->collider, objA->visual.getPos());
-                        for (int j = 0; j < 3; ++j)
-                        {
-                            if (j == 1 && c.normal[j] > 0)
-                            {
-                                on_floor = true;
-                            }
-                            if (c.normal[j] < 0 && objA->velocity[j] > 0.0)
-                            {
-                                objA->velocity[j] = 0.0;
-                            }
-                            if (c.normal[j] > 0 && objA->velocity[j] < 0.0)
-                            {
-                                objA->velocity[j] = 0.0;
-                            }
-                        }
-                    }
+                    collisionResolution(objA, objB, on_floor);
                 }
-                if (objB == globalPlayerPointer)
+                if (objB == pPlayer)
                 {
-                    collision c = normal_collision(&objB->collider, &objA->collider, objB->velocity, objA->velocity);
-                    if (c.hit)
-                    {
-                        for (int i = 0; i < 3; ++i)
-                        {
-                            if (c.hitLocation[i] != objB->collider.pos[i])
-                            {
-                                objB->visual.getPos()[i] = c.hitLocation[i];
-                            }
-                        }
-                        putAABB(&objB->collider, objB->visual.getPos());
-                        for (int j = 0; j < 3; ++j)
-                        {
-                            if (j == 1 && c.normal[j] > 0)
-                            {
-                                on_floor = true;
-                            }
-                            if (c.normal[j] < 0 && objB->velocity[j] > 0.0)
-                            {
-                                objB->velocity[j] = 0.0;
-                            }
-                            if (c.normal[j] > 0 && objB->velocity[j] < 0.0)
-                            {
-                                objB->velocity[j] = 0.0;
-                            }
-                        }
-                    }
+                    collisionResolution(objB, objA, on_floor);
                 }
             }
         }
@@ -717,44 +707,26 @@ void octree::collisionTest(level_object *pPlayer, bool &on_floor)
     --depth;
 }
 
-level_object *globalPlayerPointer = nullptr;
-void level::updatePlayerPhysics(double tick_time, glm::vec3 &plPos, glm::vec3 &player_last_position, glm::vec3 &player_velocity, aabb &player_collider, bool &on_floor)
+void level::updatePlayerPhysics(double tick_time, level_object &plObject, bool &on_floor)
 {
     if (getObjectCount() == 0)
     {
         // std::cout << "no object levels.\n";
         return;
     }
-    if (plPos.y < -25.0) // needs to be taken out in favor of a real looping mechanic??
+    if (plObject.visual.getPos().y < -25.0) // needs to be taken out in favor of a real looping mechanic??
     {
-        plPos = glm::vec3(0.0, 25.0, 0.0);
+        plObject.Put(0.0, 25.0, -3.0);
     }
 
     on_floor = false;
 
-    static level_object plObject;
-
-    // putAABB(&player_collider, plPos + player_velocity * (float)tick_time); // future collision
-    putAABB(&plObject.collider, plPos + player_velocity * (float)tick_time); // future collision
-    plObject.visual.Put(plPos);
-    plObject.velocity = player_velocity;
-    static bool treeMade = false;
+    putAABB(&plObject.collider, plObject.visual.getPos() + plObject.velocity * (float)tick_time); // future position
     if (tree == nullptr)
     {
         treeMade = false;
     }
 
-    // for (int i = 0; i < objects.size(); ++i)
-    // {
-    //     if (!objects[i].visual.isDynamic())
-    //         continue;
-
-    //     if (objects[i].visual.getPos() != objects[i].visual.getLastPosition() || objects[i].visual.getScale() != objects[i].visual.getLastScale())
-    //     {
-    //         tree->clear();
-    //     }
-    //     treeMade = false;
-    // }
     if (!treeMade)
     {
         tree = new octree(glm::vec3(0.0), 1000.0);
@@ -763,43 +735,34 @@ void level::updatePlayerPhysics(double tick_time, glm::vec3 &plPos, glm::vec3 &p
             objects[i].velocity = objects[i].visual.getPos() - objects[i].visual.getLastPosition();
             tree->insert(&objects[i]);
         }
-        plObject.visual = model_primitive(MODEL_NONE);
-        plObject.visual.Put(plPos);
-        plObject.collider = player_collider;
-        putAABB(&plObject.collider, plPos + player_velocity * (float)tick_time); // future collision
-        plObject.type = OBJ_SOLID;
-        plObject.visual.makeDynamic();
-        plObject.collider.pos = plObject.visual.getPos();
-        globalPlayerPointer = &plObject;
         tree->insert(&plObject);
 
         treeMade = true;
     }
+    for (int i = 0; i < objects.size(); ++i)
+    {
+        if (!objects[i].visual.isDynamic())
+            continue;
+
+        if (objects[i].visual.getPos() != objects[i].visual.getLastPosition() || objects[i].visual.getScale() != objects[i].visual.getLastScale())
+        {
+            if (objects[i].pOctree->deleteObject(&objects[i]))
+                tree->insert(&objects[i]);
+        }
+    }
+    if (plObject.visual.getPos() != plObject.visual.getLastPosition())
+    {
+        if (plObject.pOctree->deleteObject(&plObject))
+        {
+            tree->insert(&plObject);
+        }
+    }
+    tree->cleanUpEmptyChildren();
+
     if (tree != nullptr)
     {
         tree->collisionTest(&plObject, on_floor);
     }
-    deleteOctree(); // bandaid
-
-    // run objects for loop, check if any dynamic objects moved or rescaled
-    // if they did, tree->remove(&p); tree->insert(&p);
-    // that's all!
-    // for (int i = 0; i < objects.size(); ++i)
-    // {
-    //     if (!objects[i].visual.isDynamic())
-    //         continue;
-
-    //     if (objects[i].visual.getPos() != objects[i].visual.getLastPosition() || objects[i].visual.getScale() != objects[i].visual.getLastScale())
-    //     {
-    //         // tree->removeObj(&objects[i]);
-    //         // tree->insert(&objects[i]);
-    //     }
-    // }
-    // if (plObject.visual.getPos() != plObject.visual.getLastPosition() || plObject.visual.getScale() != plObject.visual.getLastScale())
-    // {
-    //     tree->removeObj(&plObject);
-    //     tree->insert(&plObject);
-    // }
 
     if (!on_floor)
         plObject.velocity.y += 0.5 * gravity * tick_time;
@@ -812,13 +775,9 @@ void level::updatePlayerPhysics(double tick_time, glm::vec3 &plPos, glm::vec3 &p
     plObject.velocity.z = 0.0;
     if (!on_floor)
         plObject.velocity.y += 0.5 * gravity * tick_time;
-
-    plPos = plObject.visual.getPos();
-    putAABB(&player_collider, plObject.visual.getPos());
-    player_velocity = plObject.velocity;
 }
 
-void level::updateTriggerChecks(aabb &playerCollider, glm::vec3 &plPos, glm::vec3 &camDir, glm::vec2 &mousePos, bool &mouseClicked)
+void level::updateTriggerChecks(level_object &plObject, glm::vec3 &camDir, glm::vec2 &mousePos, bool &mouseClicked)
 {
     for (int i = 0; i < getTriggerCount(); ++i)
     {
@@ -831,7 +790,7 @@ void level::updateTriggerChecks(aabb &playerCollider, glm::vec3 &plPos, glm::vec
             triggers[i].triggered = true;
             break;
         case TCAUSE_COLLISION:
-            if (!triggers[i].triggered && colliding(playerCollider, objects[triggers[i].objIndex].collider))
+            if (!triggers[i].triggered && colliding(plObject.collider, objects[triggers[i].objIndex].collider))
             {
                 triggers[i].timerDown = triggers[i].time;
                 triggers[i].triggered = true;
@@ -853,7 +812,7 @@ void level::updateTriggerChecks(aabb &playerCollider, glm::vec3 &plPos, glm::vec
             break;
         case TCAUSE_LOOKAT:
         {
-            raycast ray = {plPos + glm::vec3(0.0, 0.5, 0.0), glm::normalize(camDir)};
+            raycast ray = {plObject.visual.getPos() + glm::vec3(0.0, 0.5, 0.0), glm::normalize(camDir)};
             glm::vec3 hitPos = glm::vec3(0.0);
             bool raycasthit = colliding(ray, objects[triggers[i].objIndex].collider, hitPos);
 
@@ -904,7 +863,7 @@ void level::updateTriggerChecks(aabb &playerCollider, glm::vec3 &plPos, glm::vec
 
     triggerGameStartedCheck = true;
 }
-void level::updateTriggerResponses(glm::vec3 &plPos, double tick_time)
+void level::updateTriggerResponses(level_object &plObject, double tick_time)
 {
     audio_player_struct *audio_player = audio_player_struct::getInstance();
 
@@ -952,7 +911,8 @@ void level::updateTriggerResponses(glm::vec3 &plPos, double tick_time)
             if (triggers[i].time == triggers[i].timerDown || triggers[i].time == 0.0)
             {
                 setLevel = triggers[i].newLevel;
-                plPos = spawnLocation;
+                plObject.Put(spawnLocation);
+                plObject.Put(spawnLocation);
             }
             break;
         case TTYPE_PLAYSOUND:
@@ -989,6 +949,7 @@ void level::updateTriggerResponses(glm::vec3 &plPos, double tick_time)
 
 void octree::draw(shader &shad, double alpha_time)
 {
+#ifndef __EMSCRIPTEN__
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     glLineWidth(12.0);
     visual.draw(shad, pixel_scale, alpha_time);
@@ -998,4 +959,5 @@ void octree::draw(shader &shad, double alpha_time)
             pChild[i]->draw(shad, alpha_time);
     }
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+#endif
 }

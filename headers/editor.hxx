@@ -99,6 +99,7 @@ public:
     void duplicateSelectedObject()
     {
         level_object *obj = mainGame.getCurrentLevel()->getObjectAtIndex(selectedObj);
+        obj->visual.SetColor(1.0, 1.0, 1.0, 1.0);
         mainGame.getCurrentLevel()->addObject(MODEL_CUBE, obj->visual.getPos(), obj->visual.getScale(), obj->visual.getImage(), obj->type, true);
         std::ofstream output(temp_path, std::ios::app);
         if (!output.is_open())
@@ -120,7 +121,50 @@ public:
         duped_obj->lineIndex = mainGame.getCurrentLevel()->getLineCount() - 1;
         duped_obj->visual.makeDynamic();
         duped_obj->visual.SetColor(0.5, 1.0, 0.5, 1.0);
-        obj->visual.SetColor(1.0, 1.0, 1.0, 1.0);
+        selectedObj = mainGame.getCurrentLevel()->getObjectCount() - 1;
+    }
+    void deleteSelectedObject()
+    {
+        level_object *obj = mainGame.getCurrentLevel()->getObjectAtIndex(selectedObj);
+        std::ifstream input(temp_path);
+        if (!input.is_open())
+        {
+            std::cout << "Delete object error: failed to open input file " << temp_path << "\n";
+            return;
+        }
+        std::stringstream ss("");
+
+        std::string line;
+        unsigned int lineNum = 0;
+        while (std::getline(input, line))
+        {
+            if (lineNum == obj->lineIndex)
+            {
+                ++lineNum;
+                continue;
+            }
+
+            ss << line << "\n";
+
+            ++lineNum;
+        }
+        input.close();
+        std::ofstream output(temp_path);
+        if (!output.is_open())
+        {
+            std::cout << "Delete object error: failed to open output file " << temp_path << "\n";
+            return;
+        }
+
+        line = "";
+        while (std::getline(ss, line))
+        {
+            output << line << "\n";
+        }
+
+        output.close();
+
+        mainGame.getCurrentLevel()->removeObjectAtIndex(selectedObj);
     }
 
     void selectObj(glm::vec3 camPos, glm::vec3 camDir, int &textureOffset) // now add support for pcubes, variables, triggers, and everything else. There should be a key that locks the cube in place and scales according to player movement instead
@@ -190,7 +234,7 @@ public:
         edit_line = obj->lineIndex;
     }
 
-    void updateObj(glm::vec3 camPos, glm::vec3 prevCamPos, int &textureOffset, bool &textureEditing, bool &createObjCall)
+    void updateObj(glm::vec3 camPos, glm::vec3 prevCamPos, int &textureOffset, bool &textureEditing, bool &createObjCall, bool &deleteObjCall)
     {
         textureEditing = false;
         if (createObjCall && selectedObj == -1)
@@ -203,6 +247,13 @@ public:
         {
             duplicateSelectedObject();
             updateNum = 0;
+        }
+
+        if (deleteObjCall && selectedObj != -1)
+        {
+            deleteSelectedObject();
+            updateNum = 0;
+            selectedObj = -1;
         }
 
         if (selectedObj == -1)

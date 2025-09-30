@@ -25,7 +25,7 @@ extern const unsigned int window_height = 420;
 const double tick_time = 0.01;
 const unsigned int frameUpdateLimit = 60;
 unsigned int frameUpdateCount = 0;
-extern const glm::vec3 spawnLocation = glm::vec3(0, 0, -3.0);
+extern const glm::vec3 spawnLocation = glm::vec3(0, 0, 3.0);
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 void mouse_callback(GLFWwindow *window, double xpos, double ypos);
@@ -40,21 +40,19 @@ double debugSaveTimer = 0.0;
 const double debugSaveCountdown = 5.0;
 templevel editor_level;
 int debug_texture_offset = 0;
-bool debug_editing_texture = false, debug_create_obj_called = false;
+bool debug_editing_texture = false, debug_create_obj_called = false, debug_delete_obj_called = false;
 
-glm::vec3 cameraPos = spawnLocation;
-glm::vec3 cameraOffset = glm::vec3(0.0, 0.5, 0.0);
 glm::vec3 cameraFront = glm::vec3(0.0, 0.0, -1.0);
 glm::vec3 cameraXZFront = glm::vec3(0.0, 0.0, -1.0);
 glm::vec3 up = glm::vec3(0.0, 1.0, 0.0);
 glm::vec3 cameraRight = glm::vec3(0.0);
 glm::quat cameraRotation = glm::quat(glm::vec3(0.0));
-glm::vec3 cameraVelocity = glm::vec3(0.0);
-const double CAMERA_SPEED = 6.0;
+level_object player_object;
+const double CAMERA_SPEED = 10.0;
 
 double pitch = 0.0, yaw = -90.0;
 double cameraFloor = 0.0;
-double jump_velocity = 4.0;
+double jump_velocity = 5.0;
 bool onGround = false;
 glm::vec2 mousePos = glm::vec2(0.0);
 bool mouseClicked = false, mousePressed = false;
@@ -132,10 +130,13 @@ int main()
     allTextures.addTexture(2, "./img/dirt.png");
     allTextures.addTexture(3, "./img/sign.png");
     allTextures.addTexture(4, "./img/death.png");
-    allTextures.addTexture(5, "./img/playbutton.png");
+    allTextures.addTexture(5, "./img/playbutton.png"); // plObject, octree cleanup (remove and insert functions), mobile (mouse-based) graphics/movement. Done! Start designing a game if you don't want to be broke! :)
 
     // aabb plcol = makeAABB(glm::vec3(0.0), glm::vec3(0.5, 1.75, 0.5));
-    level_object player_object; // MAKE THIS YE instead of camearaPos and stuff use this position
+    player_object.visual = model_primitive(MODEL_CUBE, true, false);
+    player_object.Put(spawnLocation);
+    player_object.SetScale(glm::vec3(0.5, 1.75, 0.5));
+    player_object.type = OBJ_SOLID;
 
     bool testbool = false;
 
@@ -146,7 +147,6 @@ int main()
     glfwSetCursorPosCallback(window, mouse_callback);
 
     double frame_accumulation = 0.0;
-    glm::vec3 prevCameraPos = cameraPos;
 
     loop = [&]
     {
@@ -161,8 +161,6 @@ int main()
 
         while (frame_accumulation >= tick_time)
         {
-            prevCameraPos = cameraPos;
-
             if (!debugMode)
                 processInput(window);
             if (debugMode)
@@ -170,28 +168,31 @@ int main()
                 processDebugInput(window);
             }
 
-            mainGame.update_level(tick_time, cameraPos, prevCameraPos, cameraVelocity, mousePos, mouseClicked, plcol, cameraFront, onGround, debugMode); // also try cameraPos + cameraVel and cameraPos
+            mainGame.update_level(tick_time, player_object, mousePos, mouseClicked, cameraFront, onGround, debugMode); // also try cameraPos + cameraVel and cameraPos
             if (debugMode)
             {
-                cameraPos += cameraVelocity * static_cast<float>(tick_time);
-                editor_level.updateObj(cameraPos, prevCameraPos, debug_texture_offset, debug_editing_texture, debug_create_obj_called);
+                // cameraPos += cameraVelocity * static_cast<float>(tick_time);
+                player_object.visual.Move(player_object.velocity * static_cast<float>(tick_time));
+                editor_level.updateObj(player_object.visual.getPos(), player_object.visual.getLastPosition(),
+                                       debug_texture_offset, debug_editing_texture, debug_create_obj_called, debug_delete_obj_called);
             }
 
             frame_accumulation -= tick_time;
         }
         double alpha_time = frame_accumulation / tick_time;
 
-        glm::vec3 interpolatedCameraPos = (cameraPos * static_cast<float>(alpha_time)) + (prevCameraPos * static_cast<float>(1.0 - alpha_time));
-        cameraOffset = interpolatedCameraPos + glm::vec3(0.0, 0.5, 0.0);
+        glm::vec3 interpolatedCameraPos = (player_object.visual.getPos() * static_cast<float>(alpha_time)) +
+                                          (player_object.visual.getLastPosition() * static_cast<float>(1.0 - alpha_time));
 
         glm::mat4 mCamRotation = glm::mat4(1.0);
         mCamRotation = glm::mat4_cast(cameraRotation);
 
         glm::mat4 mCamTranslate = glm::mat4(1.0);
-        mCamTranslate = glm::translate(mCamTranslate, -cameraPos - glm::vec3(0.0, 0.5, 0.0));
+        mCamTranslate = glm::translate(mCamTranslate, -interpolatedCameraPos - glm::vec3(0.0, 0.5, 0.0));
 
         view = mCamRotation * mCamTranslate;
         shader_main.setMat4("view", view);
+        player_object.Put(interpolatedCameraPos);
 
         glm::mat4 ortho_view = glm::lookAt(glm::vec3(0.0, 0.0, -1.0), glm::vec3(0.0), up);
         shader_ui.setMat4("view", ortho_view);
@@ -207,7 +208,7 @@ int main()
         }
 
         // inter-update here
-        mainGame.draw_level(shader_main, shader_ui, alpha_time);
+        mainGame.draw_level(shader_main, shader_ui, debugMode, alpha_time);
 
         glfwSwapBuffers((GLFWwindow *)window);
         glfwPollEvents();
@@ -351,8 +352,19 @@ void processDebugInput(GLFWwindow *window)
     {
         addObjButtonHeld = false;
     }
+    static bool deleteObjButtonHeld = false;
+    debug_delete_obj_called = false;
+    if (!deleteObjButtonHeld && glfwGetKey(window, GLFW_KEY_BACKSPACE) == GLFW_PRESS)
+    {
+        debug_delete_obj_called = true;
+        deleteObjButtonHeld = true;
+    }
+    if (glfwGetKey(window, GLFW_KEY_BACKSPACE) == GLFW_RELEASE)
+    {
+        deleteObjButtonHeld = false;
+    }
 
-    cameraVelocity = moveDir;
+    player_object.velocity = moveDir;
 
     if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS)
     {
@@ -379,7 +391,7 @@ void processDebugInput(GLFWwindow *window)
     if (rightMouseHeld && glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_2) == GLFW_RELEASE)
     {
         rightMouseHeld = false;
-        editor_level.selectObj(cameraPos, cameraFront, debug_texture_offset);
+        editor_level.selectObj(player_object.visual.getPos(), cameraFront, debug_texture_offset);
     }
 }
 void processInput(GLFWwindow *window)
@@ -410,9 +422,9 @@ void processInput(GLFWwindow *window)
 
     if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && onGround)
     {
-        cameraVelocity.y = jump_velocity;
+        player_object.velocity.y = jump_velocity;
     }
-    cameraVelocity = glm::vec3(moveDir.x, cameraVelocity.y, moveDir.z);
+    player_object.velocity = glm::vec3(moveDir.x, player_object.velocity.y, moveDir.z);
 
     if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS)
     {
