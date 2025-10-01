@@ -4,8 +4,11 @@
 extern float pixel_scale;
 extern float ui_pixel_scale;
 extern const glm::vec3 spawnLocation;
+extern const unsigned int current_window_width;
+extern const unsigned int current_window_height;
 extern const unsigned int window_width;
 extern const unsigned int window_height;
+extern bool window_resize;
 
 void game::setup_level(const char *level_path)
 {
@@ -549,12 +552,13 @@ void level::addUIObject(glm::vec2 pos, glm::vec2 scale, unsigned int texture)
 {
     model_primitive quad(MODEL_QUAD);
     quad.Image(texture);
-    quad.Put(-pos.x / ui_pixel_scale, pos.y / ui_pixel_scale, 0.0);
-    double pixel_multi = 1.0 / ui_pixel_scale;
-    quad.Scale(scale.x * pixel_multi, scale.y * pixel_multi, 1.0);
-    aabb2d ui_collider({pos * ((float)window_height / ui_pixel_scale), glm::vec2(scale.x * (float)window_height * pixel_multi, scale.y * (float)window_height * pixel_multi)});
+    quad.Put(-pos.x / ui_pixel_scale * ((double)current_window_width / (double)current_window_height), pos.y / ui_pixel_scale, 0.0);
+    quad.Scale(scale.x / ui_pixel_scale, scale.y / ui_pixel_scale, 1.0);
+    aabb2d ui_collider({pos * (glm::vec2((float)current_window_width, (float)current_window_height) / ui_pixel_scale),
+                        glm::vec2((scale.x * (float)current_window_width / ui_pixel_scale) / ((double)window_width / (double)window_height),
+                                  scale.y * (float)current_window_height / ui_pixel_scale)});
 
-    ui_objects.push_back({quad, ui_collider});
+    ui_objects.push_back({quad, ui_collider, 0, pos, scale});
 }
 void level::addAudio(std::string id, std::string path)
 {
@@ -606,6 +610,15 @@ void level::reset()
     triggerGameStartedCheck = false;
     setLevel = "";
 }
+void ui_object::updateSize(bool window_resized)
+{
+    if (!window_resized)
+        return;
+    double window_aspect = (double)window_width / (double)window_height;
+    collider.pos = glm::vec2(truepos.x * ((float)current_window_width / ui_pixel_scale), truepos.y * ((float)current_window_height / ui_pixel_scale));
+    collider.scale = glm::vec2((truescale.x * (float)current_window_width / ui_pixel_scale) / window_aspect,
+                               truescale.y * (float)current_window_height / ui_pixel_scale);
+}
 void level::drawLevel(shader &shad, shader &shad_ui, bool debugMode, double alpha) // please add multi-shader support
 {
     for (int i = 0; i < getObjectCount(); ++i)
@@ -614,6 +627,7 @@ void level::drawLevel(shader &shad, shader &shad_ui, bool debugMode, double alph
     }
     for (int i = 0; i < getUICount(); ++i)
     {
+        ui_objects[i].updateSize(window_resize);
         ui_objects[i].visual.draw(shad_ui, ui_pixel_scale, alpha);
     }
     if (tree != nullptr && debugMode)
@@ -804,8 +818,17 @@ void level::updateTriggerChecks(level_object &plObject, glm::vec3 &camDir, glm::
             }
             break;
         case TCAUSE_UI_CLICKED:
+            if (!triggers[i].triggered && colliding(ui_objects[triggers[i].uiIndex].collider, mousePos))
+            {
+                ui_objects[triggers[i].uiIndex].visual.SetColor(1.5, 1.5, 1.5, 1.0);
+            }
+            else
+            {
+                ui_objects[triggers[i].uiIndex].visual.SetColor(1.0, 1.0, 1.0, 1.0);
+            }
             if (!triggers[i].triggered && colliding(ui_objects[triggers[i].uiIndex].collider, mousePos) && mouseClicked)
             {
+                ui_objects[triggers[i].uiIndex].visual.SetColor(0.5, 0.5, 0.5, 1.0);
                 triggers[i].timerDown = triggers[i].time;
                 triggers[i].triggered = true;
             }

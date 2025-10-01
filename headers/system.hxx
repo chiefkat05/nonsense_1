@@ -271,6 +271,9 @@ struct ui_object
     model_primitive visual;
     aabb2d collider;
     unsigned int lineIndex = 0;
+    glm::vec2 truepos = glm::vec2(0.0), truescale = glm::vec2(1.0);
+
+    void updateSize(bool window_resized);
 };
 
 class level

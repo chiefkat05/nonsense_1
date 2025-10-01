@@ -22,6 +22,12 @@
 
 extern const unsigned int window_width = 640;
 extern const unsigned int window_height = 420;
+unsigned int current_window_width = window_width;
+unsigned int current_window_height = window_height;
+glm::vec2 window_multiple = glm::vec2(1.0, 1.0);
+bool window_resize = false;
+extern float pixel_scale;
+extern float ui_pixel_scale;
 const double tick_time = 0.01;
 const unsigned int frameUpdateLimit = 60;
 unsigned int frameUpdateCount = 0;
@@ -51,6 +57,7 @@ level_object player_object;
 const double CAMERA_SPEED = 10.0;
 
 double pitch = 0.0, yaw = -90.0;
+const float mouse_sensitivity = 0.001f;
 double cameraFloor = 0.0;
 double jump_velocity = 5.0;
 bool onGround = false;
@@ -60,6 +67,7 @@ bool mouseClicked = false, mousePressed = false;
 bool cursorHeld = false;
 
 bool debugMode = false;
+bool mobileMode = false;
 
 GLFWwindow *window;
 
@@ -130,7 +138,10 @@ int main()
     allTextures.addTexture(2, "./img/dirt.png");
     allTextures.addTexture(3, "./img/sign.png");
     allTextures.addTexture(4, "./img/death.png");
-    allTextures.addTexture(5, "./img/playbutton.png"); // plObject, octree cleanup (remove and insert functions), mobile (mouse-based) graphics/movement. Done! Start designing a game if you don't want to be broke! :)
+    allTextures.addTexture(5, "./img/playbutton.png"); // mobile (mouse-based) graphics/movement. Done! Start designing a game if you don't want to be broke! :) Also, windows build is broken
+    allTextures.addTexture(6, "./img/mobilebutton.png");
+    allTextures.addTexture(7, "./img/mobile-movement.png");
+    allTextures.addTexture(8, "./img/mobile-sight.png");
 
     // aabb plcol = makeAABB(glm::vec3(0.0), glm::vec3(0.5, 1.75, 0.5));
     player_object.visual = model_primitive(MODEL_CUBE, true, false);
@@ -146,6 +157,31 @@ int main()
     glfwSetWindowFocusCallback(window, window_focus_callback);
     glfwSetCursorPosCallback(window, mouse_callback);
 
+    model_primitive mobileVisual(MODEL_QUAD);
+    mobileVisual.Image(6);
+    mobileVisual.Put(-32.0 / ui_pixel_scale * window_aspect, 48.0 / ui_pixel_scale, 0.0);
+    mobileVisual.Scale(32.0 / ui_pixel_scale, 24.0 / ui_pixel_scale, 1.0);
+    glm::vec2 windowVec2 = glm::vec2((float)window_width, (float)window_height);
+    aabb2d ui_collider({glm::vec2(32.0, 48.0) * (windowVec2 / ui_pixel_scale), glm::vec2(32.0 * (float)window_height / ui_pixel_scale, 24.0 * (float)window_height / ui_pixel_scale)});
+
+    ui_object mobileButton = ui_object({mobileVisual, ui_collider, 0, glm::vec2(32.0, 48.0), glm::vec2(32.0, 24.0)});
+
+    model_primitive mobileEyeVisual(MODEL_QUAD);
+    mobileEyeVisual.Image(8);
+    mobileEyeVisual.Put(-52.0 / ui_pixel_scale * window_aspect, 16.0 / ui_pixel_scale, 0.0);
+    mobileEyeVisual.Scale(32.0 / ui_pixel_scale, 32.0 / ui_pixel_scale, 1.0);
+    aabb2d m_eye_collider({glm::vec2(52.0, 16.0) * (windowVec2 / ui_pixel_scale), glm::vec2(32.0 * (float)window_height / ui_pixel_scale, 32.0 * (float)window_height / ui_pixel_scale)});
+
+    ui_object mobileEyeObject = ui_object({mobileEyeVisual, m_eye_collider, 0, glm::vec2(52.0, 16.0), glm::vec2(32.0, 32.0)});
+
+    model_primitive mobileWalkVisual(MODEL_QUAD);
+    mobileWalkVisual.Image(7);
+    mobileWalkVisual.Put(-12.0 / ui_pixel_scale * window_aspect, 16.0 / ui_pixel_scale, 0.0);
+    mobileWalkVisual.Scale(32.0 / ui_pixel_scale, 32.0 / ui_pixel_scale, 1.0);
+    aabb2d m_walk_collider({glm::vec2(12.0, 16.0) * (windowVec2 / ui_pixel_scale), glm::vec2(32.0 * (float)window_height / ui_pixel_scale, 32.0 * (float)window_height / ui_pixel_scale)});
+
+    ui_object mobileWalkObject = ui_object({mobileWalkVisual, m_walk_collider, 0, glm::vec2(12.0, 16.0), glm::vec2(32.0, 32.0)});
+
     double frame_accumulation = 0.0;
 
     loop = [&]
@@ -159,19 +195,60 @@ int main()
         currentTime = glfwGetTime();
         delta_time = currentTime - lastTime;
 
-        while (frame_accumulation >= tick_time)
+        if (!debugMode)
+            processInput(window);
+        if (debugMode)
         {
-            if (!debugMode)
-                processInput(window);
-            if (debugMode)
+            processDebugInput(window);
+        }
+
+        mobileButton.updateSize(window_resize);
+        mobileEyeObject.updateSize(window_resize);
+        mobileWalkObject.updateSize(window_resize);
+        if (mobileMode)
+        {
+            if (colliding(mobileEyeObject.collider, mousePos) && mousePressed)
             {
-                processDebugInput(window);
+                glm::vec2 mobileLookVector = glm::normalize(mousePos - mobileEyeObject.collider.pos) * 10.0f;
+                pitch += mobileLookVector.y * mouse_sensitivity;
+                yaw += mobileLookVector.x * mouse_sensitivity;
             }
 
+            if (pitch > 1.5f)
+                pitch = 1.5f;
+            if (pitch < -1.5f)
+                pitch = -1.5f;
+
+            glm::quat qPitch = glm::angleAxis(static_cast<float>(-pitch), glm::vec3(1.0, 0.0, 0.0));
+            glm::quat qYaw = glm::angleAxis(static_cast<float>(yaw), glm::vec3(0.0, 1.0, 0.0));
+            glm::quat nqYaw = glm::angleAxis(static_cast<float>(-yaw), glm::vec3(0.0, 1.0, 0.0));
+
+            cameraRotation = glm::normalize(qPitch * qYaw);
+
+            glm::quat lookDirection = glm::angleAxis(static_cast<float>(yaw), glm::vec3(0.0, -1.0, 0.0)); // this took so long to figure out you have no idea :)
+            lookDirection *= glm::angleAxis(static_cast<float>(pitch), glm::vec3(1.0, 0.0, 0.0));
+            cameraFront = glm::normalize(glm::rotate(lookDirection, glm::vec3(0.0, 0.0, -1.0)));
+
+            glm::quat swappedRot = glm::normalize(glm::quat(nqYaw));
+            cameraXZFront = glm::rotate(swappedRot, glm::vec3(0.0, 0.0, -1.0));
+            cameraRight = glm::cross(cameraXZFront, up);
+
+            if (colliding(mobileWalkObject.collider, mousePos) && mousePressed)
+            {
+                glm::vec2 mobileMoveVector = mousePos - mobileWalkObject.collider.pos;
+                mobileMoveVector = glm::normalize(mobileMoveVector) * static_cast<float>(CAMERA_SPEED);
+                glm::vec3 mobileMoveDir = glm::vec3(0.0);
+                mobileMoveDir += cameraXZFront * mobileMoveVector.y;
+                mobileMoveDir += cameraRight * mobileMoveVector.x;
+                player_object.velocity = glm::vec3(mobileMoveDir.x, player_object.velocity.y, mobileMoveDir.z);
+            }
+        }
+
+        while (frame_accumulation >= tick_time)
+        {
             mainGame.update_level(tick_time, player_object, mousePos, mouseClicked, cameraFront, onGround, debugMode); // also try cameraPos + cameraVel and cameraPos
             if (debugMode)
             {
-                // cameraPos += cameraVelocity * static_cast<float>(tick_time);
                 player_object.visual.Move(player_object.velocity * static_cast<float>(tick_time));
                 editor_level.updateObj(player_object.visual.getPos(), player_object.visual.getLastPosition(),
                                        debug_texture_offset, debug_editing_texture, debug_create_obj_called, debug_delete_obj_called);
@@ -210,6 +287,36 @@ int main()
         // inter-update here
         mainGame.draw_level(shader_main, shader_ui, debugMode, alpha_time);
 
+        if (mobileMode)
+        {
+            mobileEyeObject.visual.draw(shader_ui, ui_pixel_scale, alpha_time);
+            mobileWalkObject.visual.draw(shader_ui, ui_pixel_scale, alpha_time);
+        }
+
+        if (mainGame.current_level_path == "./levels/menu.l")
+        {
+            mobileButton.visual.draw(shader_ui, ui_pixel_scale, alpha_time);
+            if (colliding(mobileButton.collider, mousePos) && !mousePressed)
+            {
+                mobileButton.visual.SetColor(1.5, 1.5, 1.5, 1.0);
+            }
+            else if (colliding(mobileButton.collider, mousePos) && mousePressed)
+            {
+                mobileButton.visual.SetColor(0.75, 0.75, 0.75, 1.0);
+            }
+            else
+            {
+                mobileButton.visual.SetColor(1.0, 1.0, 1.0, 1.0);
+            }
+            if (colliding(mobileButton.collider, mousePos) && mouseClicked)
+            {
+                mobileButton.visual.SetColor(0.5, 0.5, 0.5, 1.0);
+                mobileMode = !mobileMode;
+            }
+        }
+
+        window_resize = false;
+
         glfwSwapBuffers((GLFWwindow *)window);
         glfwPollEvents();
     };
@@ -232,18 +339,24 @@ int main()
 void framebuffer_size_callback(GLFWwindow *window, int width, int height)
 {
     glViewport(0, 0, width, height);
+    current_window_width = width;
+    current_window_height = height;
+    window_resize = true;
+    window_multiple = glm::vec2(static_cast<double>(width) / static_cast<double>(window_width), (static_cast<double>(height) / static_cast<double>(window_height)));
 }
 
 void mouse_callback(GLFWwindow *window, double xpos, double ypos)
 {
-    mousePos = glm::vec2(xpos, (ypos * -1.0) + window_height);
+    mousePos = glm::vec2(xpos, current_window_height - ypos);
+
+    if (mobileMode)
+        return;
 
     float xoffset = xpos - 0.0;
     float yoffset = 0.0 - ypos;
 
-    const float sensitivity = 0.001f;
-    xoffset *= sensitivity;
-    yoffset *= sensitivity;
+    xoffset *= mouse_sensitivity;
+    yoffset *= mouse_sensitivity;
 
     if (cursorHeld)
     {
