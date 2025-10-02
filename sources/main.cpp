@@ -32,6 +32,7 @@ const double tick_time = 0.01;
 const unsigned int frameUpdateLimit = 60;
 unsigned int frameUpdateCount = 0;
 extern const glm::vec3 spawnLocation = glm::vec3(0, 0, 3.0);
+const std::string START_LEVEL_PATH = "./levels/menu.l";
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 void mouse_callback(GLFWwindow *window, double xpos, double ypos);
@@ -142,6 +143,7 @@ int main()
     allTextures.addTexture(6, "./img/mobilebutton.png");
     allTextures.addTexture(7, "./img/mobile-movement.png");
     allTextures.addTexture(8, "./img/mobile-sight.png");
+    allTextures.addTexture(9, "./img/fullscreen.png");
 
     // aabb plcol = makeAABB(glm::vec3(0.0), glm::vec3(0.5, 1.75, 0.5));
     player_object.visual = model_primitive(MODEL_CUBE, true, false);
@@ -182,6 +184,14 @@ int main()
 
     ui_object mobileWalkObject = ui_object({mobileWalkVisual, m_walk_collider, 0, glm::vec2(12.0, 16.0), glm::vec2(32.0, 32.0)});
 
+    model_primitive fullscreenVisual(MODEL_QUAD);
+    fullscreenVisual.Image(9);
+    fullscreenVisual.Put(-8.0 / ui_pixel_scale * window_aspect, 52.0 / ui_pixel_scale, 0.0);
+    fullscreenVisual.Scale(16.0 / ui_pixel_scale, 16.0 / ui_pixel_scale, 1.0);
+    aabb2d fs_ui_collider({glm::vec2(8.0, 52.0) * (windowVec2 / ui_pixel_scale), glm::vec2(16.0 * (float)window_height / ui_pixel_scale, 16.0 * (float)window_height / ui_pixel_scale)});
+
+    ui_object fullscreenButton = ui_object({fullscreenVisual, fs_ui_collider, 0, glm::vec2(8.0, 52.0), glm::vec2(32.0, 24.0)});
+
     double frame_accumulation = 0.0;
 
     loop = [&]
@@ -203,10 +213,11 @@ int main()
         }
 
         mobileButton.updateSize(window_resize);
-        mobileEyeObject.updateSize(window_resize);
-        mobileWalkObject.updateSize(window_resize);
+        fullscreenButton.updateSize(window_resize);
         if (mobileMode)
         {
+            mobileEyeObject.updateSize(window_resize);
+            mobileWalkObject.updateSize(window_resize);
             if (colliding(mobileEyeObject.collider, mousePos) && mousePressed)
             {
                 glm::vec2 mobileLookVector = glm::normalize(mousePos - mobileEyeObject.collider.pos) * 10.0f;
@@ -244,9 +255,9 @@ int main()
             }
         }
 
-        while (frame_accumulation >= tick_time)
+        while (frame_accumulation >= tick_time) // hey the buttons need to be clicked on frame start/end or they won't register the click... fix pls
         {
-            mainGame.update_level(tick_time, player_object, mousePos, mouseClicked, cameraFront, onGround, debugMode); // also try cameraPos + cameraVel and cameraPos
+            mainGame.update_level(tick_time, player_object, cameraFront, onGround, debugMode); // also try cameraPos + cameraVel and cameraPos
             if (debugMode)
             {
                 player_object.visual.Move(player_object.velocity * static_cast<float>(tick_time));
@@ -293,9 +304,10 @@ int main()
             mobileWalkObject.visual.draw(shader_ui, ui_pixel_scale, alpha_time);
         }
 
-        if (mainGame.current_level_path == "./levels/menu.l")
+        if (mainGame.current_level_path == START_LEVEL_PATH)
         {
             mobileButton.visual.draw(shader_ui, ui_pixel_scale, alpha_time);
+            fullscreenButton.visual.draw(shader_ui, ui_pixel_scale, alpha_time);
             if (colliding(mobileButton.collider, mousePos) && !mousePressed)
             {
                 mobileButton.visual.SetColor(1.5, 1.5, 1.5, 1.0);
@@ -312,6 +324,24 @@ int main()
             {
                 mobileButton.visual.SetColor(0.5, 0.5, 0.5, 1.0);
                 mobileMode = !mobileMode;
+            }
+
+            static bool isFullScreen = false;
+            fullscreenButton.visual.SetColor(1.0, 1.0, 1.0, 1.0);
+            if (colliding(fullscreenButton.collider, mousePos) && mouseClicked && !isFullScreen)
+            {
+                fullscreenButton.visual.SetColor(0.5, 0.5, 0.5, 1.0);
+                int monitorSizeX;
+                int monitorSizeY;
+                glfwGetMonitorPhysicalSize(glfwGetPrimaryMonitor(), &monitorSizeX, &monitorSizeY);
+                glfwSetWindowMonitor(window, glfwGetPrimaryMonitor(), 0, 0, monitorSizeX, monitorSizeY, GLFW_DONT_CARE);
+                isFullScreen = true;
+            }
+            else if (colliding(fullscreenButton.collider, mousePos) && mouseClicked && isFullScreen)
+            {
+                fullscreenButton.visual.SetColor(0.5, 0.5, 0.5, 1.0);
+                glfwSetWindowMonitor(window, NULL, 0, 0, current_window_width, current_window_height, GLFW_DONT_CARE);
+                isFullScreen = false;
             }
         }
 

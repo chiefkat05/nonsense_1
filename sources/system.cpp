@@ -9,6 +9,8 @@ extern const unsigned int current_window_height;
 extern const unsigned int window_width;
 extern const unsigned int window_height;
 extern bool window_resize;
+extern bool mousePressed;
+extern glm::vec2 mousePos;
 
 void game::setup_level(const char *level_path)
 {
@@ -503,7 +505,7 @@ void game::setup_level(const char *level_path)
     current_level = new_level;
 }
 
-void game::update_level(double tick_time, level_object &plObject, glm::vec2 &mousePos, bool &mouseClicked, glm::vec3 camDir, bool &onG, bool debug)
+void game::update_level(double tick_time, level_object &plObject, glm::vec3 camDir, bool &onG, bool debug)
 {
     if (current_level.setLevel != "")
     {
@@ -513,7 +515,11 @@ void game::update_level(double tick_time, level_object &plObject, glm::vec2 &mou
         // plObject.Put(spawnLocation);
         return;
     }
-    current_level.updateTriggerChecks(plObject, camDir, mousePos, mouseClicked);
+    for (int i = 0; i < current_level.getUICount(); ++i)
+    {
+        current_level.getUIAtIndex(i)->updateButtonState();
+    }
+    current_level.updateTriggerChecks(plObject, camDir);
     current_level.updateTriggerResponses(plObject, tick_time);
     if (!debug)
         current_level.updatePlayerPhysics(tick_time, plObject, onG);
@@ -618,6 +624,35 @@ void ui_object::updateSize(bool window_resized)
     collider.pos = glm::vec2(truepos.x * ((float)current_window_width / ui_pixel_scale), truepos.y * ((float)current_window_height / ui_pixel_scale));
     collider.scale = glm::vec2((truescale.x * (float)current_window_width / ui_pixel_scale) / window_aspect,
                                truescale.y * (float)current_window_height / ui_pixel_scale);
+}
+void ui_object::updateButtonState()
+{
+    clicked = false;
+    if (colliding(collider, mousePos)) // mouse over button
+    {
+        hovered = true;
+        if (mousePressed) // mouse over button and pressed
+        {
+            held = true;
+            released = false;
+        }
+        else // mouse over button, not pressed
+        {
+            if (held)
+            {
+                clicked = true;
+            }
+            held = false;
+            released = true;
+        }
+    }
+    else // mouse not over button
+    {
+        hovered = false;
+        held = false;
+        released = true;
+        clicked = false;
+    }
 }
 void level::drawLevel(shader &shad, shader &shad_ui, bool debugMode, double alpha) // please add multi-shader support
 {
@@ -791,7 +826,7 @@ void level::updatePlayerPhysics(double tick_time, level_object &plObject, bool &
         plObject.velocity.y += 0.5 * gravity * tick_time;
 }
 
-void level::updateTriggerChecks(level_object &plObject, glm::vec3 &camDir, glm::vec2 &mousePos, bool &mouseClicked)
+void level::updateTriggerChecks(level_object &plObject, glm::vec3 &camDir)
 {
     for (int i = 0; i < getTriggerCount(); ++i)
     {
@@ -811,24 +846,15 @@ void level::updateTriggerChecks(level_object &plObject, glm::vec3 &camDir, glm::
             }
             break;
         case TCAUSE_UI_HOVERED:
-            if (!triggers[i].triggered && colliding(ui_objects[triggers[i].uiIndex].collider, mousePos))
+            if (!triggers[i].triggered && ui_objects[triggers[i].uiIndex].hovered)
             {
                 triggers[i].timerDown = triggers[i].time;
                 triggers[i].triggered = true;
             }
             break;
         case TCAUSE_UI_CLICKED:
-            if (!triggers[i].triggered && colliding(ui_objects[triggers[i].uiIndex].collider, mousePos))
+            if (!triggers[i].triggered && ui_objects[triggers[i].uiIndex].clicked)
             {
-                ui_objects[triggers[i].uiIndex].visual.SetColor(1.5, 1.5, 1.5, 1.0);
-            }
-            else
-            {
-                ui_objects[triggers[i].uiIndex].visual.SetColor(1.0, 1.0, 1.0, 1.0);
-            }
-            if (!triggers[i].triggered && colliding(ui_objects[triggers[i].uiIndex].collider, mousePos) && mouseClicked)
-            {
-                ui_objects[triggers[i].uiIndex].visual.SetColor(0.5, 0.5, 0.5, 1.0);
                 triggers[i].timerDown = triggers[i].time;
                 triggers[i].triggered = true;
             }

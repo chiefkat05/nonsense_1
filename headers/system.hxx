@@ -272,8 +272,10 @@ struct ui_object
     aabb2d collider;
     unsigned int lineIndex = 0;
     glm::vec2 truepos = glm::vec2(0.0), truescale = glm::vec2(1.0);
+    bool held = false, released = false, clicked = false, hovered;
 
     void updateSize(bool window_resized);
+    void updateButtonState();
 };
 
 class level
@@ -362,7 +364,7 @@ public:
     void reset();
     void drawLevel(shader &shad, shader &shad_ui, bool debugMode, double alpha);
     void updatePlayerPhysics(double tick_time, level_object &plObject, bool &on_floor);
-    void updateTriggerChecks(level_object &plObject, glm::vec3 &camDir, glm::vec2 &mousePos, bool &mouseClicked);
+    void updateTriggerChecks(level_object &plObject, glm::vec3 &camDir);
     void updateTriggerResponses(level_object &plObject, double tick_time);
 };
 
@@ -376,7 +378,7 @@ private:
 public:
     void setup_level(const char *level_path);
 
-    void update_level(double tick_time, level_object &plObject, glm::vec2 &mousePos, bool &mouseClicked, glm::vec3 camDir, bool &onG, bool debug = false);
+    void update_level(double tick_time, level_object &plObject, glm::vec3 camDir, bool &onG, bool debug = false);
     void draw_level(shader &shad, shader &shad_ui, bool debugMode, double alpha);
     std::string current_level_path = "";
 
