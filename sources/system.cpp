@@ -778,6 +778,7 @@ void level::updatePlayerPhysics(double tick_time, level_object &plObject, bool &
     if (plObject.visual.getPos().y < -25.0) // needs to be taken out in favor of a real looping mechanic??
     {
         plObject.Put(0.0, 25.0, -3.0);
+        plObject.Put(0.0, 25.0, -3.0);
     }
 
     on_floor = false;
