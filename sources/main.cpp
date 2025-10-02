@@ -343,6 +343,13 @@ int main()
                 glfwSetWindowMonitor(window, NULL, 0, 0, current_window_width, current_window_height, GLFW_DONT_CARE);
                 isFullScreen = false;
             }
+
+#ifdef __EMSCRIPTEN__
+            if (isFullScreen)
+            {
+                std::cout << " yay\n";
+            }
+#endif
         }
 
         window_resize = false;

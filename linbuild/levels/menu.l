@@ -5,3 +5,5 @@ trigger clicked fadeoutsound music 0.1
 sound music ./snd/yippe.mp3
 trigger start playsound music 0.0
 trigger start fadeinsound music 0.1
+
+globalvar m 1.0
