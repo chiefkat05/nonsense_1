@@ -17,6 +17,11 @@ void game::setup_level(const char *level_path)
     current_level_path = level_path;
     level new_level;
 
+    for (int i = 0; i < global_variables.size(); ++i)
+    {
+        new_level.addVariable(global_variables[i].strID, global_variables[i].value, true);
+    }
+
     std::ifstream level_file(level_path);
     if (!level_file.is_open())
     {
@@ -225,7 +230,7 @@ void game::setup_level(const char *level_path)
 
                 ++step;
             }
-            if (making == LCOMM_VARIABLE)
+            if (making == LCOMM_VARIABLE || making == LCOMM_GLOBAL_VARIABLE)
             {
                 static std::string sID = "";
                 static double value = 0.0;
@@ -237,7 +242,7 @@ void game::setup_level(const char *level_path)
                     break;
                 case 1:
                     value = std::stod(word);
-                    new_level.addVariable(sID, value);
+                    new_level.addVariable(sID, value, (making == LCOMM_GLOBAL_VARIABLE));
                     new_level.getVariableAtIndex(new_level.getVariableCount() - 1)->lineIndex = lineNum - 1;
                     making = LCOMM_NONE;
                     step = -1;
@@ -510,6 +515,13 @@ void game::update_level(double tick_time, level_object &plObject, glm::vec3 camD
     if (current_level.setLevel != "")
     {
         std::string new_level_path = current_level.setLevel;
+        for (int i = 0; i < current_level.getVariableCount(); ++i)
+        {
+            if (!current_level.getVariableAtIndex(i)->is_global)
+                return;
+
+            global_variables.push_back(*current_level.getVariableAtIndex(i));
+        }
         current_level.reset();
         setup_level(new_level_path.c_str());
         // plObject.Put(spawnLocation);
@@ -550,9 +562,9 @@ void level::removeObjectAtIndex(unsigned int index)
     deleteOctree();
     treeMade = false;
 }
-void level::addVariable(std::string id, double value)
+void level::addVariable(std::string id, double value, bool global)
 {
-    variables.push_back({id, value});
+    variables.push_back({id, value, 0, global});
 }
 void level::addUIObject(glm::vec2 pos, glm::vec2 scale, unsigned int texture)
 {

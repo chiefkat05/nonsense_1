@@ -264,6 +264,7 @@ struct level_variable
     std::string strID = "null_variable";
     double value = 0.0;
     unsigned int lineIndex = 0;
+    bool is_global = false;
 };
 
 struct ui_object
@@ -348,7 +349,7 @@ public:
 
     void addObject(model_primitive_type model_type, glm::vec3 pos, glm::vec3 scale, unsigned int texture, object_type type, bool visible = true);
     void removeObjectAtIndex(unsigned int index);
-    void addVariable(std::string id, double value);
+    void addVariable(std::string id, double value, bool global);
     void addUIObject(glm::vec2 pos, glm::vec2 scale, unsigned int texture);
     void addAudio(std::string id, std::string path);
 
@@ -372,8 +373,7 @@ class game
 {
 private:
     level current_level;
-    std::vector<level_variable> global_variables; // will maybe need to be inserted and taken out of level whenever level changed so level can access the variables too
-    unsigned int global_variable_count = 0;
+    std::vector<level_variable> global_variables; // will maybe need to be inserted and taken out of level whenever level changed so level can access the variables to
 
 public:
     void setup_level(const char *level_path);
