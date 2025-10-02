@@ -383,7 +383,8 @@ void mouse_callback(GLFWwindow *window, double xpos, double ypos)
     cameraXZFront = glm::rotate(swappedRot, glm::vec3(0.0, 0.0, -1.0));
     cameraRight = glm::cross(cameraXZFront, up);
 
-    glfwSetCursorPos(window, 0, 0);
+    if (cursorHeld)
+        glfwSetCursorPos(window, 0, 0);
 }
 
 void processDebugInput(GLFWwindow *window)
