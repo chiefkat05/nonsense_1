@@ -60,7 +60,7 @@ const double CAMERA_SPEED = 10.0;
 double pitch = 0.0, yaw = -90.0;
 const float mouse_sensitivity = 0.001f;
 double cameraFloor = 0.0;
-double jump_velocity = 5.0;
+double jump_velocity = 10.0;
 bool onGround = false;
 glm::vec2 mousePos = glm::vec2(0.0);
 bool mouseClicked = false, mousePressed = false;
@@ -205,13 +205,6 @@ int main()
         currentTime = glfwGetTime();
         delta_time = currentTime - lastTime;
 
-        if (!debugMode)
-            processInput(window);
-        if (debugMode)
-        {
-            processDebugInput(window);
-        }
-
         mobileButton.updateSize(window_resize);
         fullscreenButton.updateSize(window_resize);
         if (mobileMode)
@@ -236,7 +229,7 @@ int main()
 
             cameraRotation = glm::normalize(qPitch * qYaw);
 
-            glm::quat lookDirection = glm::angleAxis(static_cast<float>(yaw), glm::vec3(0.0, -1.0, 0.0)); // this took so long to figure out you have no idea :)
+            glm::quat lookDirection = glm::angleAxis(static_cast<float>(yaw), glm::vec3(0.0, -1.0, 0.0));
             lookDirection *= glm::angleAxis(static_cast<float>(pitch), glm::vec3(1.0, 0.0, 0.0));
             cameraFront = glm::normalize(glm::rotate(lookDirection, glm::vec3(0.0, 0.0, -1.0)));
 
@@ -255,14 +248,21 @@ int main()
             }
         }
 
-        while (frame_accumulation >= tick_time) // hey the buttons need to be clicked on frame start/end or they won't register the click... fix pls
+        while (frame_accumulation >= tick_time)
         {
-            mainGame.update_level(tick_time, player_object, cameraFront, onGround, debugMode); // also try cameraPos + cameraVel and cameraPos
+            if (!debugMode)
+                processInput(window);
             if (debugMode)
             {
+                processDebugInput(window);
+            }
+
+            mainGame.update_level(tick_time, player_object, cameraFront, onGround, debugMode);
+            if (debugMode)
+            { // when I createobj it creates two? but one is not shown only appears in the level file
                 player_object.visual.Move(player_object.velocity * static_cast<float>(tick_time));
                 editor_level.updateObj(player_object.visual.getPos(), player_object.visual.getLastPosition(),
-                                       debug_texture_offset, debug_editing_texture, debug_create_obj_called, debug_delete_obj_called);
+                                       debug_texture_offset, debug_editing_texture, debug_create_obj_called, debug_delete_obj_called, tick_time);
             }
 
             frame_accumulation -= tick_time;
@@ -280,7 +280,7 @@ int main()
 
         view = mCamRotation * mCamTranslate;
         shader_main.setMat4("view", view);
-        player_object.Put(interpolatedCameraPos);
+        *player_object.visual.refLastPos() = player_object.visual.getPos();
 
         glm::mat4 ortho_view = glm::lookAt(glm::vec3(0.0, 0.0, -1.0), glm::vec3(0.0), up);
         shader_ui.setMat4("view", ortho_view);
@@ -598,9 +598,6 @@ void processInput(GLFWwindow *window)
     if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_1) == GLFW_PRESS)
     {
         mousePressed = true;
-        // glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-        // glfwFocusWindow(window);
-        // cursorHeld = true;
     }
     if (mousePressed && glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_1) == GLFW_RELEASE)
     {

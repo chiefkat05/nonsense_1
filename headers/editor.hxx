@@ -87,9 +87,9 @@ public:
             std::cout << "New object error: failed to open " << temp_path << "\n";
             return;
         }
-        output << "\n"
-               << "cube 0.0 0.0 0.0 1.0 1.0 1.0 0 0" << "\n";
+        output << "cube 0.0 0.0 0.0 1.0 1.0 1.0 0 0";
         output.close();
+        mainGame.getCurrentLevel()->addLine();
 
         level_object *obj = mainGame.getCurrentLevel()->getObjectAtIndex(mainGame.getCurrentLevel()->getObjectCount() - 1);
         obj->lineIndex = mainGame.getCurrentLevel()->getLineCount() - 1;
@@ -107,16 +107,16 @@ public:
             std::cout << "New object error: failed to open " << temp_path << "\n";
             return;
         }
-        output << "\n"
-               << "cube " << std::to_string(obj->visual.getPos().x) << " "
+        output << "cube " << std::to_string(obj->visual.getPos().x) << " "
                << std::to_string(obj->visual.getPos().y) << " "
                << std::to_string(obj->visual.getPos().z) << " "
                << std::to_string(obj->visual.getScale().x) << " "
                << std::to_string(obj->visual.getScale().y) << " "
                << std::to_string(obj->visual.getScale().z) << " "
                << std::to_string(obj->visual.getImage()) << " "
-               << std::to_string(obj->type) << "\n";
+               << std::to_string(obj->type);
         output.close();
+        mainGame.getCurrentLevel()->addLine();
         level_object *duped_obj = mainGame.getCurrentLevel()->getObjectAtIndex(mainGame.getCurrentLevel()->getObjectCount() - 1);
         duped_obj->lineIndex = mainGame.getCurrentLevel()->getLineCount() - 1;
         duped_obj->visual.makeDynamic();
@@ -164,10 +164,10 @@ public:
 
         output.close();
 
-        mainGame.getCurrentLevel()->removeObjectAtIndex(selectedObj);
+        mainGame.getCurrentLevel()->removeObjectAtIndex(selectedObj); // something's off probably with the lineNum variable, please check and get an std::cout << line << " "; in there to check what's going on!
     }
 
-    void selectObj(glm::vec3 camPos, glm::vec3 camDir, int &textureOffset) // now add support for pcubes, variables, triggers, and everything else. There should be a key that locks the cube in place and scales according to player movement instead
+    void selectObj(glm::vec3 camPos, glm::vec3 camDir, int &textureOffset)
     {
         int closestObj = -1;
         double contactDistance = std::numeric_limits<double>::infinity();
@@ -234,7 +234,7 @@ public:
         edit_line = obj->lineIndex;
     }
 
-    void updateObj(glm::vec3 camPos, glm::vec3 prevCamPos, int &textureOffset, bool &textureEditing, bool &createObjCall, bool &deleteObjCall)
+    void updateObj(glm::vec3 camPos, glm::vec3 prevCamPos, int &textureOffset, bool &textureEditing, bool &createObjCall, bool &deleteObjCall, double tick_time)
     {
         textureEditing = false;
         if (createObjCall && selectedObj == -1)
@@ -264,11 +264,11 @@ public:
         switch (updateNum)
         {
         case 0:
-            obj->visual.Move(camPos - prevCamPos);
+            obj->visual.Move((camPos - prevCamPos));
             obj->collider.pos = obj->visual.getPos();
             break;
         case 1:
-            obj->visual.Scale(obj->visual.getScale() + (camPos - prevCamPos));
+            obj->visual.Scale(obj->visual.getScale() + ((camPos - prevCamPos) * 2.0f));
             if (obj->visual.getScale().x < 0.0)
             {
                 obj->visual.Scale(0.0, obj->visual.getScale().y, obj->visual.getScale().z);
@@ -322,6 +322,7 @@ public:
         {
             if (lineNum == obj->lineIndex)
             {
+                std::cout << lineNum << " / " << mainGame.getCurrentLevel()->getLineCount() << ", " << line << " huh\n"; // what?
                 bool finishedUpdate = false;
                 int step = 0;
                 std::stringstream ss(line);

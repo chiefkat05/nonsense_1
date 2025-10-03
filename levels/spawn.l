@@ -6,5 +6,6 @@ trigger start fadeinsound music2 0.1
 ui 32.0 32.0 0.5 0.5 1
 
 //floor
-cube 0.0 -1.0 0.0 40.0 1.0 40.0 2 0
-trigger is m equalto 1.0 scale 1.0 0.0 0.0 0.0
+
+cube 0.000000 -1.000000 0.000000 40.000000 1.000000 40.000000 2 0
+// some errors with the editor.h
