@@ -550,6 +550,7 @@ void level::addObject(model_primitive_type model_type, glm::vec3 pos, glm::vec3 
     c.Image(texture);
     aabb col = makeAABB(pos, scale);
     objects.push_back({c, col, type});
+    deleteOctree();
 }
 void level::removeObjectAtIndex(unsigned int index)
 {
@@ -560,7 +561,6 @@ void level::removeObjectAtIndex(unsigned int index)
     objects.erase(objects.begin() + index); // does this even work?
 
     deleteOctree();
-    treeMade = false;
 }
 void level::addVariable(std::string id, double value, bool global)
 {

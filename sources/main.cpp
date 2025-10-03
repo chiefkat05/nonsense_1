@@ -259,7 +259,7 @@ int main()
 
             mainGame.update_level(tick_time, player_object, cameraFront, onGround, debugMode);
             if (debugMode)
-            { // when I createobj it creates two? but one is not shown only appears in the level file
+            {
                 player_object.visual.Move(player_object.velocity * static_cast<float>(tick_time));
                 editor_level.updateObj(player_object.visual.getPos(), player_object.visual.getLastPosition(),
                                        debug_texture_offset, debug_editing_texture, debug_create_obj_called, debug_delete_obj_called, tick_time);

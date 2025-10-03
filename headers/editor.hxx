@@ -322,7 +322,6 @@ public:
         {
             if (lineNum == obj->lineIndex)
             {
-                std::cout << lineNum << " / " << mainGame.getCurrentLevel()->getLineCount() << ", " << line << " huh\n"; // what?
                 bool finishedUpdate = false;
                 int step = 0;
                 std::stringstream ss(line);

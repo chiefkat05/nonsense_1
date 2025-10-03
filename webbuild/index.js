@@ -24,7 +24,7 @@ var ENVIRONMENT_IS_SHELL = false;
 
 // --pre-jses are emitted after the Module integration code, so that they can
 // refer to Module (if they choose; they can also define Module)
-// include: /tmp/tmp5_u_i1tc.js
+// include: /tmp/tmp3iean93v.js
 
   Module['expectedDataFileDownloads'] ??= 0;
   Module['expectedDataFileDownloads']++;
@@ -151,25 +151,25 @@ Module['FS_createPath']("/", "snd", true, true);
     }
 
     }
-    loadPackage({"files": [{"filename": "/img/brick.aseprite", "start": 0, "end": 380}, {"filename": "/img/brick.png", "start": 380, "end": 658}, {"filename": "/img/cargo.aseprite", "start": 658, "end": 1015}, {"filename": "/img/cargo.png", "start": 1015, "end": 1255}, {"filename": "/img/death.aseprite", "start": 1255, "end": 1709}, {"filename": "/img/death.png", "start": 1709, "end": 1989}, {"filename": "/img/dirt.aseprite", "start": 1989, "end": 2399}, {"filename": "/img/dirt.png", "start": 2399, "end": 2759}, {"filename": "/img/door.aseprite", "start": 2759, "end": 3117}, {"filename": "/img/door.png", "start": 3117, "end": 3232}, {"filename": "/img/fullscreen.aseprite", "start": 3232, "end": 3613}, {"filename": "/img/fullscreen.png", "start": 3613, "end": 3780}, {"filename": "/img/mobile-movement.aseprite", "start": 3780, "end": 4535}, {"filename": "/img/mobile-movement.png", "start": 4535, "end": 4858}, {"filename": "/img/mobile-sight.aseprite", "start": 4858, "end": 5743}, {"filename": "/img/mobile-sight.png", "start": 5743, "end": 6075}, {"filename": "/img/mobilebutton.aseprite", "start": 6075, "end": 6688}, {"filename": "/img/mobilebutton.png", "start": 6688, "end": 6917}, {"filename": "/img/playbutton.aseprite", "start": 6917, "end": 7366}, {"filename": "/img/playbutton.png", "start": 7366, "end": 7598}, {"filename": "/img/sign.aseprite", "start": 7598, "end": 7932}, {"filename": "/img/sign.png", "start": 7932, "end": 8115}, {"filename": "/levels/menu.l", "start": 8115, "end": 8341}, {"filename": "/levels/spawn.l", "start": 8341, "end": 8570}, {"filename": "/shaders/instanced.vs", "start": 8570, "end": 9485}, {"filename": "/shaders/main.fs", "start": 9485, "end": 9665}, {"filename": "/shaders/main.vs", "start": 9665, "end": 9772}, {"filename": "/shaders/simple-emscripten.fs", "start": 9772, "end": 9954}, {"filename": "/shaders/simple-emscripten.vs", "start": 9954, "end": 10076}, {"filename": "/shaders/texture-color.fs", "start": 10076, "end": 10336}, {"filename": "/shaders/texture-emscripten-color.fs", "start": 10336, "end": 10624}, {"filename": "/shaders/texture-emscripten.fs", "start": 10624, "end": 10878}, {"filename": "/shaders/texture-emscripten.vs", "start": 10878, "end": 11834}, {"filename": "/shaders/texture.fs", "start": 11834, "end": 12066}, {"filename": "/shaders/texture.vs", "start": 12066, "end": 12981}, {"filename": "/snd/land.wav", "start": 12981, "end": 145167}, {"filename": "/snd/step.wav", "start": 145167, "end": 177513}, {"filename": "/snd/weary.mp3", "start": 177513, "end": 4567257}, {"filename": "/snd/yippe.mp3", "start": 4567257, "end": 4888691}], "remote_package_size": 4888691});
+    loadPackage({"files": [{"filename": "/img/brick.aseprite", "start": 0, "end": 380}, {"filename": "/img/brick.png", "start": 380, "end": 658}, {"filename": "/img/cargo.aseprite", "start": 658, "end": 1015}, {"filename": "/img/cargo.png", "start": 1015, "end": 1255}, {"filename": "/img/death.aseprite", "start": 1255, "end": 1709}, {"filename": "/img/death.png", "start": 1709, "end": 1989}, {"filename": "/img/dirt.aseprite", "start": 1989, "end": 2399}, {"filename": "/img/dirt.png", "start": 2399, "end": 2759}, {"filename": "/img/door.aseprite", "start": 2759, "end": 3117}, {"filename": "/img/door.png", "start": 3117, "end": 3232}, {"filename": "/img/fullscreen.aseprite", "start": 3232, "end": 3613}, {"filename": "/img/fullscreen.png", "start": 3613, "end": 3780}, {"filename": "/img/mobile-movement.aseprite", "start": 3780, "end": 4535}, {"filename": "/img/mobile-movement.png", "start": 4535, "end": 4858}, {"filename": "/img/mobile-sight.aseprite", "start": 4858, "end": 5743}, {"filename": "/img/mobile-sight.png", "start": 5743, "end": 6075}, {"filename": "/img/mobilebutton.aseprite", "start": 6075, "end": 6688}, {"filename": "/img/mobilebutton.png", "start": 6688, "end": 6917}, {"filename": "/img/playbutton.aseprite", "start": 6917, "end": 7366}, {"filename": "/img/playbutton.png", "start": 7366, "end": 7598}, {"filename": "/img/sign.aseprite", "start": 7598, "end": 7932}, {"filename": "/img/sign.png", "start": 7932, "end": 8115}, {"filename": "/levels/menu.l", "start": 8115, "end": 8324}, {"filename": "/levels/spawn.l", "start": 8324, "end": 8620}, {"filename": "/shaders/instanced.vs", "start": 8620, "end": 9535}, {"filename": "/shaders/main.fs", "start": 9535, "end": 9715}, {"filename": "/shaders/main.vs", "start": 9715, "end": 9822}, {"filename": "/shaders/simple-emscripten.fs", "start": 9822, "end": 10004}, {"filename": "/shaders/simple-emscripten.vs", "start": 10004, "end": 10126}, {"filename": "/shaders/texture-color.fs", "start": 10126, "end": 10386}, {"filename": "/shaders/texture-emscripten-color.fs", "start": 10386, "end": 10674}, {"filename": "/shaders/texture-emscripten.fs", "start": 10674, "end": 10928}, {"filename": "/shaders/texture-emscripten.vs", "start": 10928, "end": 11884}, {"filename": "/shaders/texture.fs", "start": 11884, "end": 12116}, {"filename": "/shaders/texture.vs", "start": 12116, "end": 13031}, {"filename": "/snd/land.wav", "start": 13031, "end": 145217}, {"filename": "/snd/step.wav", "start": 145217, "end": 177563}, {"filename": "/snd/weary.mp3", "start": 177563, "end": 4567307}, {"filename": "/snd/yippe.mp3", "start": 4567307, "end": 4888741}], "remote_package_size": 4888741});
 
   })();
 
-// end include: /tmp/tmp5_u_i1tc.js
-// include: /tmp/tmpzg5e0ezx.js
+// end include: /tmp/tmp3iean93v.js
+// include: /tmp/tmp5tq_htuz.js
 
     // All the pre-js content up to here must remain later on, we need to run
     // it.
     if ((typeof ENVIRONMENT_IS_WASM_WORKER != 'undefined' && ENVIRONMENT_IS_WASM_WORKER) || (typeof ENVIRONMENT_IS_PTHREAD != 'undefined' && ENVIRONMENT_IS_PTHREAD) || (typeof ENVIRONMENT_IS_AUDIO_WORKLET != 'undefined' && ENVIRONMENT_IS_AUDIO_WORKLET)) Module['preRun'] = [];
     var necessaryPreJSTasks = Module['preRun'].slice();
-  // end include: /tmp/tmpzg5e0ezx.js
-// include: /tmp/tmplnd87oog.js
+  // end include: /tmp/tmp5tq_htuz.js
+// include: /tmp/tmpzgomcemh.js
 
     if (!Module['preRun']) throw 'Module.preRun should exist because file support used it; did a pre-js delete it?';
     necessaryPreJSTasks.forEach((task) => {
       if (Module['preRun'].indexOf(task) < 0) throw 'All preRun tasks that exist before user pre-js code should remain after; did you replace Module or modify Module.preRun?';
     });
-  // end include: /tmp/tmplnd87oog.js
+  // end include: /tmp/tmpzgomcemh.js
 
 
 var arguments_ = [];
