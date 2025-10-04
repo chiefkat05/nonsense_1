@@ -775,10 +775,10 @@ void level::updatePlayerPhysics(double tick_time, level_object &plObject, bool &
         // std::cout << "no object levels.\n";
         return;
     }
-    if (plObject.visual.getPos().y < -25.0) // needs to be taken out in favor of a real looping mechanic??
+    if (plObject.visual.getPos().y < -80.0) // needs to be taken out in favor of a real looping mechanic??
     {
-        plObject.Put(0.0, 25.0, -3.0);
-        plObject.Put(0.0, 25.0, -3.0);
+        plObject.Put(spawnLocation);
+        plObject.Put(spawnLocation);
     }
 
     on_floor = false;

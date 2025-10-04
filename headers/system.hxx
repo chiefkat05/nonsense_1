@@ -290,7 +290,7 @@ private:
     bool triggerGameStartedCheck = false;
     unsigned int lineCount = 0;
 
-    double gravity = -9.81;
+    double gravity = -3.1;
     octree *tree = nullptr;
     bool treeMade = false;
     // octree tree;

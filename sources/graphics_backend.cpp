@@ -4,7 +4,7 @@
 #include "../stb/stb_image.h"
 
 extern texturegroup allTextures;
-float pixel_scale = 16.0;
+float pixel_scale = 64.0;
 float ui_pixel_scale = 64.0;
 
 float cube_vertices[288] = {

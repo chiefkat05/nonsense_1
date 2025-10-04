@@ -55,12 +55,12 @@ glm::vec3 up = glm::vec3(0.0, 1.0, 0.0);
 glm::vec3 cameraRight = glm::vec3(0.0);
 glm::quat cameraRotation = glm::quat(glm::vec3(0.0));
 level_object player_object;
-const double CAMERA_SPEED = 10.0;
+const double CAMERA_SPEED = 5.0;
 
 double pitch = 0.0, yaw = -90.0;
 const float mouse_sensitivity = 0.001f;
 double cameraFloor = 0.0;
-double jump_velocity = 10.0;
+double jump_velocity = 1.5;
 bool onGround = false;
 glm::vec2 mousePos = glm::vec2(0.0);
 bool mouseClicked = false, mousePressed = false;
@@ -108,10 +108,10 @@ int main()
 
 #ifndef __EMSCRIPTEN__
     shader shader_main("./shaders/texture.vs", "./shaders/texture-color.fs");
-    shader shader_ui("./shaders/texture.vs", "./shaders/texture-color.fs");
+    shader shader_ui("./shaders/texture.vs", "./shaders/texture-ui.fs");
 #else
     shader shader_main("./shaders/texture-emscripten.vs", "./shaders/texture-emscripten-color.fs");
-    shader shader_ui("./shaders/texture-emscripten.vs", "./shaders/texture-emscripten-color.fs");
+    shader shader_ui("./shaders/texture-emscripten.vs", "./shaders/texture-emscripten-ui.fs");
 #endif
 
     glEnable(GL_DEPTH_TEST);
@@ -280,6 +280,7 @@ int main()
 
         view = mCamRotation * mCamTranslate;
         shader_main.setMat4("view", view);
+        shader_main.setVec3("playerPos", interpolatedCameraPos + glm::vec3(0.0, 0.5, 0.0));
         *player_object.visual.refLastPos() = player_object.visual.getPos();
 
         glm::mat4 ortho_view = glm::lookAt(glm::vec3(0.0, 0.0, -1.0), glm::vec3(0.0), up);
