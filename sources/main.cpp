@@ -60,7 +60,7 @@ const double CAMERA_SPEED = 5.0;
 double pitch = 0.0, yaw = -90.0;
 const float mouse_sensitivity = 0.001f;
 double cameraFloor = 0.0;
-double jump_velocity = 1.5;
+double jump_velocity = 0.0;
 bool onGround = false;
 glm::vec2 mousePos = glm::vec2(0.0);
 bool mouseClicked = false, mousePressed = false;
@@ -134,16 +134,16 @@ int main()
     glm::mat4 orth_proj = glm::ortho(0.0f, window_aspect, 0.0f, 1.0f, -1000.0f, 1000.0f);
     shader_ui.setMat4("projection", orth_proj);
 
-    allTextures.addTexture(0, "./img/brick.png");
-    allTextures.addTexture(1, "./img/cargo.png");
-    allTextures.addTexture(2, "./img/dirt.png");
-    allTextures.addTexture(3, "./img/sign.png");
-    allTextures.addTexture(4, "./img/death.png");
-    allTextures.addTexture(5, "./img/playbutton.png"); // mobile (mouse-based) graphics/movement. Done! Start designing a game if you don't want to be broke! :) Also, windows build is broken
-    allTextures.addTexture(6, "./img/mobilebutton.png");
-    allTextures.addTexture(7, "./img/mobile-movement.png");
-    allTextures.addTexture(8, "./img/mobile-sight.png");
-    allTextures.addTexture(9, "./img/fullscreen.png");
+    allTextures.addTexture(0, "./img/playbutton.png"); // mobile (mouse-based) graphics/movement. Done! Start designing a game if you don't want to be broke! :) Also, windows build is broken
+    allTextures.addTexture(1, "./img/mobilebutton.png");
+    allTextures.addTexture(2, "./img/mobile-movement.png");
+    allTextures.addTexture(3, "./img/mobile-sight.png");
+    allTextures.addTexture(4, "./img/fullscreen.png");
+    allTextures.addTexture(5, "./img/tree.png");
+    allTextures.addTexture(6, "./img/tree-2.png");
+    allTextures.addTexture(7, "./img/tree-3.png");
+    allTextures.addTexture(8, "./img/leaves.png");
+    allTextures.addTexture(9, "./img/dirt.png");
 
     // aabb plcol = makeAABB(glm::vec3(0.0), glm::vec3(0.5, 1.75, 0.5));
     player_object.visual = model_primitive(MODEL_CUBE, true, false);
@@ -160,7 +160,7 @@ int main()
     glfwSetCursorPosCallback(window, mouse_callback);
 
     model_primitive mobileVisual(MODEL_QUAD);
-    mobileVisual.Image(6);
+    mobileVisual.Image(1);
     mobileVisual.Put(-32.0 / ui_pixel_scale * window_aspect, 48.0 / ui_pixel_scale, 0.0);
     mobileVisual.Scale(32.0 / ui_pixel_scale, 24.0 / ui_pixel_scale, 1.0);
     glm::vec2 windowVec2 = glm::vec2((float)window_width, (float)window_height);
@@ -169,7 +169,7 @@ int main()
     ui_object mobileButton = ui_object({mobileVisual, ui_collider, 0, glm::vec2(32.0, 48.0), glm::vec2(32.0, 24.0)});
 
     model_primitive mobileEyeVisual(MODEL_QUAD);
-    mobileEyeVisual.Image(8);
+    mobileEyeVisual.Image(3);
     mobileEyeVisual.Put(-52.0 / ui_pixel_scale * window_aspect, 16.0 / ui_pixel_scale, 0.0);
     mobileEyeVisual.Scale(32.0 / ui_pixel_scale, 32.0 / ui_pixel_scale, 1.0);
     aabb2d m_eye_collider({glm::vec2(52.0, 16.0) * (windowVec2 / ui_pixel_scale), glm::vec2(32.0 * (float)window_height / ui_pixel_scale, 32.0 * (float)window_height / ui_pixel_scale)});
@@ -177,7 +177,7 @@ int main()
     ui_object mobileEyeObject = ui_object({mobileEyeVisual, m_eye_collider, 0, glm::vec2(52.0, 16.0), glm::vec2(32.0, 32.0)});
 
     model_primitive mobileWalkVisual(MODEL_QUAD);
-    mobileWalkVisual.Image(7);
+    mobileWalkVisual.Image(2);
     mobileWalkVisual.Put(-12.0 / ui_pixel_scale * window_aspect, 16.0 / ui_pixel_scale, 0.0);
     mobileWalkVisual.Scale(32.0 / ui_pixel_scale, 32.0 / ui_pixel_scale, 1.0);
     aabb2d m_walk_collider({glm::vec2(12.0, 16.0) * (windowVec2 / ui_pixel_scale), glm::vec2(32.0 * (float)window_height / ui_pixel_scale, 32.0 * (float)window_height / ui_pixel_scale)});
@@ -185,7 +185,7 @@ int main()
     ui_object mobileWalkObject = ui_object({mobileWalkVisual, m_walk_collider, 0, glm::vec2(12.0, 16.0), glm::vec2(32.0, 32.0)});
 
     model_primitive fullscreenVisual(MODEL_QUAD);
-    fullscreenVisual.Image(9);
+    fullscreenVisual.Image(4);
     fullscreenVisual.Put(-8.0 / ui_pixel_scale * window_aspect, 52.0 / ui_pixel_scale, 0.0);
     fullscreenVisual.Scale(16.0 / ui_pixel_scale, 16.0 / ui_pixel_scale, 1.0);
     aabb2d fs_ui_collider({glm::vec2(8.0, 52.0) * (windowVec2 / ui_pixel_scale), glm::vec2(16.0 * (float)window_height / ui_pixel_scale, 16.0 * (float)window_height / ui_pixel_scale)});
@@ -197,7 +197,7 @@ int main()
     loop = [&]
     {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        glClearColor(0.4, 0.6, 0.9, 1.0);
+        glClearColor(0.0, 0.0, 0.0, 1.0);
 
         frame_accumulation += delta_time;
 

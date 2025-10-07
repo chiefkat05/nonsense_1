@@ -55,7 +55,8 @@ enum model_primitive_type
     MODEL_CONE,
     MODEL_CYLINDER,
     MODEL_CAPSULE,
-    MODEL_PYRAMID
+    MODEL_PYRAMID,
+    MODEL_CUSTOM
 };
 class model_primitive
 {
@@ -64,7 +65,7 @@ private:
     unsigned int textureIndex = 0;
     unsigned int *textureID = nullptr;
     model_primitive_type mtype = MODEL_NONE;
-    unsigned int vertex_count = 0;
+    unsigned int tri_count = 0;
     bool dynamic_model = false, static_model_set = false, is_visible = true;
     glm::mat4 model = glm::mat4(1.0);
 
@@ -75,7 +76,26 @@ private:
 
     glm::vec4 color = glm::vec4(1.0);
 
+    std::string model_path = "", material_dir = "";
+
 public:
+    inline std::string getModelPath()
+    {
+        return model_path;
+    }
+    inline std::string getMaterialDir()
+    {
+        return material_dir;
+    }
+    void setModelPath(std::string input)
+    {
+        model_path = input;
+    }
+    void setMaterialDir(std::string input)
+    {
+        material_dir = input;
+    }
+
     glm::vec3 rotation_direction = glm::vec3(0.0);
     glm::vec3 getPos()
     {
@@ -121,6 +141,10 @@ public:
     {
         return &last_position;
     }
+    inline model_primitive_type getType()
+    {
+        return mtype;
+    }
 
     void Put(glm::vec3 pos = glm::vec3(0.0));
     void Put(double x = 0.0, double y = 0.0, double z = 0.0);
@@ -152,7 +176,8 @@ public:
     void draw(shader &_shader, double p_scale, double alpha);
     void static_draw(shader &_shader, double p_scale);
 
-    model_primitive(model_primitive_type type, bool dyn = false, bool visible = true);
+    model_primitive(model_primitive_type type, bool dyn = false, bool vis = true);
+    model_primitive(float *_vertices, unsigned int _vertex_count, bool _dyn = false, bool _vis = true);
     model_primitive() {}
 };
 

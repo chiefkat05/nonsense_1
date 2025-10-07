@@ -12,6 +12,8 @@ extern bool window_resize;
 extern bool mousePressed;
 extern glm::vec2 mousePos;
 
+#include "../headers/model.hxx"
+
 void game::setup_level(const char *level_path)
 {
     current_level_path = level_path;
@@ -49,60 +51,18 @@ void game::setup_level(const char *level_path)
         {
             if (making == LCOMM_NONE)
             {
-                if (word == "cube")
+                if (word == "object")
                 {
-                    making = LCOMM_PRIMITIVE;
+                    making = LCOMM_OBJECT;
                     pixel_division = 1.0;
-                    model_type = MODEL_CUBE;
+                    // model_type = MODEL_CUBE; // this comes later
                     continue;
                 }
-                if (word == "pcube")
+                if (word == "pobject")
                 {
-                    making = LCOMM_PRIMITIVE_PIXELPOS;
+                    making = LCOMM_OBJECT;
                     pixel_division = pixel_scale;
-                    model_type = MODEL_CUBE;
-                    continue;
-                }
-                if (word == "quad")
-                {
-                    making = LCOMM_PRIMITIVE;
-                    pixel_division = 1.0;
-                    model_type = MODEL_QUAD;
-                    continue;
-                }
-                if (word == "pquad")
-                {
-                    making = LCOMM_PRIMITIVE;
-                    pixel_division = pixel_scale;
-                    model_type = MODEL_QUAD;
-                    continue;
-                }
-                if (word == "pyramid")
-                {
-                    making = LCOMM_PRIMITIVE;
-                    pixel_division = 1.0;
-                    model_type = MODEL_PYRAMID;
-                    continue;
-                }
-                if (word == "ppyramid")
-                {
-                    making = LCOMM_PRIMITIVE;
-                    pixel_division = pixel_scale;
-                    model_type = MODEL_PYRAMID;
-                    continue;
-                }
-                if (word == "tri")
-                {
-                    making = LCOMM_PRIMITIVE;
-                    pixel_division = 1.0;
-                    model_type = MODEL_TRI;
-                    continue;
-                }
-                if (word == "ptri")
-                {
-                    making = LCOMM_PRIMITIVE;
-                    pixel_division = pixel_scale;
-                    model_type = MODEL_TRI;
+                    // model_type = MODEL_CUBE; // again, comes later
                     continue;
                 }
                 if (word == "trigger")
@@ -181,35 +141,65 @@ void game::setup_level(const char *level_path)
                 }
                 ++step;
             }
-            if (making == LCOMM_PRIMITIVE || making == LCOMM_PRIMITIVE_PIXELPOS)
+            if (making == LCOMM_OBJECT)
             {
                 static glm::vec3 new_position = glm::vec3(0.0);
                 static glm::vec3 new_scale = glm::vec3(1.0);
                 static object_type new_type = OBJ_SOLID;
                 static unsigned int new_texture = 0;
                 static bool visible = true;
+                static std::string model_path = "", model_mat_dir = "";
 
                 switch (step)
                 {
                 case 0:
-                    new_position.x = std::stod(word) / pixel_division;
+                    if (word == "cube")
+                    {
+                        model_type = MODEL_CUBE;
+                        step = 0; // becomes 1 before next round;
+                        break;
+                    }
+                    if (word == "quad")
+                    {
+                        model_type = MODEL_QUAD;
+                        step = 0; // becomes 1 before next round;
+                        break;
+                    }
+                    if (word == "pyramid")
+                    {
+                        model_type = MODEL_PYRAMID;
+                        step = 0; // becomes 1 before next round;
+                        break;
+                    }
+                    if (word == "tri")
+                    {
+                        model_type = MODEL_TRI;
+                        step = 0; // becomes 1 before next round;
+                        break;
+                    }
+                    model_type = MODEL_CUSTOM;
+                    model_path = word;
+                    step = 8; // becomes 9
                     break;
                 case 1:
-                    new_position.y = std::stod(word) / pixel_division;
+                    new_position.x = std::stod(word) / pixel_division;
                     break;
                 case 2:
-                    new_position.z = std::stod(word) / pixel_division;
+                    new_position.y = std::stod(word) / pixel_division;
                     break;
                 case 3:
-                    new_scale.x = std::stod(word) / pixel_division;
+                    new_position.z = std::stod(word) / pixel_division;
                     break;
                 case 4:
-                    new_scale.y = std::stod(word) / pixel_division;
+                    new_scale.x = std::stod(word) / pixel_division;
                     break;
                 case 5:
-                    new_scale.z = std::stod(word) / pixel_division;
+                    new_scale.y = std::stod(word) / pixel_division;
                     break;
                 case 6:
+                    new_scale.z = std::stod(word) / pixel_division;
+                    break;
+                case 7:
                     new_texture = std::stoi(word);
                     if (std::stoi(word) < 0)
                     {
@@ -217,14 +207,18 @@ void game::setup_level(const char *level_path)
                         visible = false;
                     }
                     break;
-                case 7:
+                case 8:
                     new_type = static_cast<object_type>(std::stoi(word));
 
-                    new_level.addObject(model_type, new_position, new_scale, new_texture, new_type, visible);
+                    new_level.addObject(model_type, model_path, model_mat_dir, new_position, new_scale, new_texture, new_type, visible);
                     new_level.getObjectAtIndex(new_level.getObjectCount() - 1)->lineIndex = lineNum;
                     making = LCOMM_NONE;
                     step = -1;
                     visible = true;
+                    break;
+                case 9:
+                    model_mat_dir = word;
+                    step = 0; // becomes 1
                     break;
                 }
 
@@ -541,9 +535,20 @@ void game::draw_level(shader &shad, shader &shad_ui, bool debugMode, double alph
     current_level.drawLevel(shad, shad_ui, debugMode, alpha);
 }
 
-void level::addObject(model_primitive_type model_type, glm::vec3 pos, glm::vec3 scale, unsigned int texture, object_type type, bool visible)
+void level::addObject(model_primitive_type model_type, std::string mpath, std::string matdir, glm::vec3 pos, glm::vec3 scale, unsigned int texture, object_type type, bool visible)
 {
-    model_primitive c(model_type, false, visible);
+    model_primitive c;
+    if (model_type != MODEL_CUSTOM)
+    {
+        c = model_primitive(model_type, false, visible);
+    }
+    else
+    {
+        model_data data(mpath.c_str(), matdir.c_str());
+        c = model_primitive(&data.data.at(0), data.data.size(), false, visible);
+    }
+    c.setModelPath(mpath);
+    c.setMaterialDir(matdir);
     c.Put(pos);
     c.Put(pos); // second call to set last_position as well
     c.Scale(scale);

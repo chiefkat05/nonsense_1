@@ -80,14 +80,14 @@ public:
 
     void newObject()
     {
-        mainGame.getCurrentLevel()->addObject(MODEL_CUBE, glm::vec3(0.0), glm::vec3(1.0), 0, OBJ_SOLID, true);
+        mainGame.getCurrentLevel()->addObject(MODEL_CUBE, "", "", glm::vec3(0.0), glm::vec3(1.0), 0, OBJ_SOLID, true);
         std::ofstream output(temp_path, std::ios::app);
         if (!output.is_open())
         {
             std::cout << "New object error: failed to open " << temp_path << "\n";
             return;
         }
-        output << "cube 0.0 0.0 0.0 1.0 1.0 1.0 0 0";
+        output << "object cube 0.0 0.0 0.0 1.0 1.0 1.0 0 0";
         output.close();
         mainGame.getCurrentLevel()->addLine();
 
@@ -100,21 +100,48 @@ public:
     {
         level_object *obj = mainGame.getCurrentLevel()->getObjectAtIndex(selectedObj);
         obj->visual.SetColor(1.0, 1.0, 1.0, 1.0);
-        mainGame.getCurrentLevel()->addObject(MODEL_CUBE, obj->visual.getPos(), obj->visual.getScale(), obj->visual.getImage(), obj->type, true);
+        std::string holdMPath = obj->visual.getModelPath();
+        std::string holdMatDir = obj->visual.getMaterialDir();
+        mainGame.getCurrentLevel()->addObject(obj->visual.getType(), obj->visual.getModelPath(), obj->visual.getMaterialDir(), obj->visual.getPos(), obj->visual.getScale(), obj->visual.getImage(), obj->type, true);
+        obj->visual.setModelPath(holdMPath);
+        obj->visual.setMaterialDir(holdMatDir);
         std::ofstream output(temp_path, std::ios::app);
         if (!output.is_open())
         {
             std::cout << "New object error: failed to open " << temp_path << "\n";
             return;
         }
-        output << "cube " << std::to_string(obj->visual.getPos().x) << " "
-               << std::to_string(obj->visual.getPos().y) << " "
-               << std::to_string(obj->visual.getPos().z) << " "
-               << std::to_string(obj->visual.getScale().x) << " "
-               << std::to_string(obj->visual.getScale().y) << " "
-               << std::to_string(obj->visual.getScale().z) << " "
-               << std::to_string(obj->visual.getImage()) << " "
-               << std::to_string(obj->type);
+        if (obj->visual.getType() == MODEL_CUSTOM)
+        {
+            output << "object " << obj->visual.getModelPath() << " " << obj->visual.getMaterialDir()
+                   << " " << std::to_string(obj->visual.getPos().x) << " "
+                   << std::to_string(obj->visual.getPos().y) << " "
+                   << std::to_string(obj->visual.getPos().z) << " "
+                   << std::to_string(obj->visual.getScale().x) << " "
+                   << std::to_string(obj->visual.getScale().y) << " "
+                   << std::to_string(obj->visual.getScale().z) << " "
+                   << std::to_string(obj->visual.getImage()) << " "
+                   << std::to_string(obj->type);
+        }
+        else
+        {
+            std::string model_type_str = "";
+            switch (obj->visual.getType())
+            {
+            default:
+                model_type_str = "cube"; // add in support for the other model types
+                break;
+            }
+            output << "object " << model_type_str
+                   << " " << std::to_string(obj->visual.getPos().x) << " "
+                   << std::to_string(obj->visual.getPos().y) << " "
+                   << std::to_string(obj->visual.getPos().z) << " "
+                   << std::to_string(obj->visual.getScale().x) << " "
+                   << std::to_string(obj->visual.getScale().y) << " "
+                   << std::to_string(obj->visual.getScale().z) << " "
+                   << std::to_string(obj->visual.getImage()) << " "
+                   << std::to_string(obj->type);
+        }
         output.close();
         mainGame.getCurrentLevel()->addLine();
         level_object *duped_obj = mainGame.getCurrentLevel()->getObjectAtIndex(mainGame.getCurrentLevel()->getObjectCount() - 1);
@@ -324,6 +351,10 @@ public:
             {
                 bool finishedUpdate = false;
                 int step = 0;
+                if (obj->visual.getType() != MODEL_CUSTOM)
+                {
+                    step = 1;
+                }
                 std::stringstream ss(line);
                 std::stringstream newline("");
                 std::string word = "";
@@ -331,28 +362,28 @@ public:
                 {
                     switch (step)
                     {
-                    case 1:
+                    case 3:
                         newline << (obj->visual.getPos().x) << ' ';
                         break;
-                    case 2:
+                    case 4:
                         newline << (obj->visual.getPos().y) << ' ';
                         break;
-                    case 3:
+                    case 5:
                         newline << (obj->visual.getPos().z) << ' ';
                         break;
-                    case 4:
+                    case 6:
                         newline << (obj->visual.getScale().x) << ' ';
                         break;
-                    case 5:
+                    case 7:
                         newline << (obj->visual.getScale().y) << ' ';
                         break;
-                    case 6:
+                    case 8:
                         newline << (obj->visual.getScale().z) << ' ';
                         break;
-                    case 7:
+                    case 9:
                         newline << (obj->visual.getImage()) << ' ';
                         break;
-                    case 8:
+                    case 10:
                         newline << word;
                         step = -1;
                         finishedUpdate = true;

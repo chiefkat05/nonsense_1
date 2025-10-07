@@ -1,4 +1,4 @@
-sound music2 ./snd/weary.mp3
+sound music2 ./snd/forest.mp3
 trigger start playsound music2 0.0
 trigger start fadeinsound music2 0.1
 
@@ -7,16 +7,17 @@ ui 32.0 32.0 0.5 0.5 1
 
 //floor
 
-cube 0.000000 -1.000000 0.000000 40.000000 1.000000 40.000000 2 0
+object cube 0 -3.1 0 40 1 40 9 0
+// comm obj_path mtl_dir x y z sx sy sz image obj_type
+// figure out why there are three of these???? inserted into level during setup
+object ./models/pedestal.obj ./models/ 1 -2 0 1 1 1 0 0
 // some errors with the editor.h
-cube -0.145484 0.800005 -3.05541 1.63816 7.4 1.80633 0 0
 
 
-cube -14.2453 0.700005 2.39892 0.495269 2.6 31.9013 0 0
-cube 16.5038 0.700005 2.1642 0.495269 2.6 31.9013 0 0
-cube -4.66668 0.550005 -13.7389 43.182 2.6 0.676264 0 0
-cube -3.87902 0.650005 15.9921 43.182 2.6 0.676264 0 0
 
 
 // skybox!
-cube -0.560823 0.800005 -3.22859 34.4552 15.3 42.2178 0 1
+object cube 0 -2.5 0 40 1 40 9 0
+object cube -3.51775 0.149997 0.324774 2.60082 2.2 2.06857 4 0
+object ./models/pedestal.obj ./models/ -2.71813 -2 1.73653 1 1 1 3 0
+object cube -7.69999 0.149997 0.723474 2.60082 2.2 2.06857 6 0

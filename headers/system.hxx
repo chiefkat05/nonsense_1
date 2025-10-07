@@ -47,8 +47,7 @@ enum trigger_cause_type
 enum level_command_type
 {
     LCOMM_NONE,
-    LCOMM_PRIMITIVE,
-    LCOMM_PRIMITIVE_PIXELPOS,
+    LCOMM_OBJECT,
     LCOMM_TRIGGER,
     LCOMM_VARIABLE,
     LCOMM_GLOBAL_VARIABLE,
@@ -347,7 +346,7 @@ public:
         tree = nullptr;
     }
 
-    void addObject(model_primitive_type model_type, glm::vec3 pos, glm::vec3 scale, unsigned int texture, object_type type, bool visible = true);
+    void addObject(model_primitive_type model_type, std::string mpath, std::string matdir, glm::vec3 pos, glm::vec3 scale, unsigned int texture, object_type type, bool visible = true);
     void removeObjectAtIndex(unsigned int index);
     void addVariable(std::string id, double value, bool global);
     void addUIObject(glm::vec2 pos, glm::vec2 scale, unsigned int texture);
