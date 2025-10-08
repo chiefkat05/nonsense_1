@@ -60,7 +60,6 @@ struct octree;
 struct level_object
 {
     model_primitive visual;
-    // std::vector<aabb> colliders;
     aabb collider;
     object_type type;
     unsigned int lineIndex = 0;
@@ -347,7 +346,8 @@ public:
         tree = nullptr;
     }
 
-    void addObject(model_primitive_type model_type, std::string mpath, std::string matdir, glm::vec3 pos, glm::vec3 scale, unsigned int texture, object_type type, bool visible = true);
+    void addObject(model_primitive_type model_type, std::string mpath, std::string matdir, glm::vec3 pos, glm::vec3 scale,
+                   unsigned int texture, object_type type, bool visible = true, aabb new_col = makeAABB());
     void removeObjectAtIndex(unsigned int index);
     void addVariable(std::string id, double value, bool global);
     void addUIObject(glm::vec2 pos, glm::vec2 scale, unsigned int texture);

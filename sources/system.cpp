@@ -55,14 +55,12 @@ void game::setup_level(const char *level_path)
                 {
                     making = LCOMM_OBJECT;
                     pixel_division = 1.0;
-                    // model_type = MODEL_CUBE; // this comes later
                     continue;
                 }
                 if (word == "pobject")
                 {
                     making = LCOMM_OBJECT;
                     pixel_division = pixel_scale;
-                    // model_type = MODEL_CUBE; // again, comes later
                     continue;
                 }
                 if (word == "trigger")
@@ -77,7 +75,7 @@ void game::setup_level(const char *level_path)
                 }
                 if (word == "globalvar")
                 {
-                    making = LCOMM_GLOBAL_VARIABLE; // not complete!!
+                    making = LCOMM_GLOBAL_VARIABLE;
                     continue;
                 }
                 if (word == "ui")
@@ -149,6 +147,27 @@ void game::setup_level(const char *level_path)
                 static unsigned int new_texture = 0;
                 static bool visible = true;
                 static std::string model_path = "", model_mat_dir = "";
+                static aabb new_collider = makeAABB(glm::vec3(0.0), glm::vec3(0.0));
+
+                if (word == "end")
+                {
+                    if (new_collider.scale == glm::vec3(0.0))
+                    {
+                        new_collider = makeAABB(new_position, new_scale);
+                    }
+                    new_level.addObject(model_type, model_path, model_mat_dir, new_position, new_scale, new_texture, new_type, visible, new_collider);
+                    new_level.getObjectAtIndex(new_level.getObjectCount() - 1)->lineIndex = lineNum;
+                    making = LCOMM_NONE;
+                    step = 0;
+                    new_collider = makeAABB(glm::vec3(0.0), glm::vec3(0.0));
+                    visible = true;
+                    continue;
+                }
+                if (word == "col")
+                {
+                    step = 10;
+                    continue;
+                }
 
                 switch (step)
                 {
@@ -209,16 +228,30 @@ void game::setup_level(const char *level_path)
                     break;
                 case 8:
                     new_type = static_cast<object_type>(std::stoi(word));
-
-                    new_level.addObject(model_type, model_path, model_mat_dir, new_position, new_scale, new_texture, new_type, visible);
-                    new_level.getObjectAtIndex(new_level.getObjectCount() - 1)->lineIndex = lineNum;
-                    making = LCOMM_NONE;
-                    step = -1;
-                    visible = true;
                     break;
                 case 9:
                     model_mat_dir = word;
                     step = 0; // becomes 1
+                    break;
+                case 10:
+                    new_collider.pos.x = std::stod(word) / pixel_division;
+                    break;
+                case 11:
+                    new_collider.pos.y = std::stod(word) / pixel_division;
+                    break;
+                case 12:
+                    new_collider.pos.z = std::stod(word) / pixel_division;
+                    break;
+                case 13:
+                    new_collider.scale.x = std::stod(word) / pixel_division;
+                    break;
+                case 14:
+                    new_collider.scale.y = std::stod(word) / pixel_division;
+                    break;
+                case 15:
+                    new_collider.scale.z = std::stod(word) / pixel_division;
+                    break;
+                default:
                     break;
                 }
 
@@ -535,7 +568,8 @@ void game::draw_level(shader &shad, shader &shad_ui, bool debugMode, double alph
     current_level.drawLevel(shad, shad_ui, debugMode, alpha);
 }
 
-void level::addObject(model_primitive_type model_type, std::string mpath, std::string matdir, glm::vec3 pos, glm::vec3 scale, unsigned int texture, object_type type, bool visible)
+void level::addObject(model_primitive_type model_type, std::string mpath, std::string matdir, glm::vec3 pos, glm::vec3 scale,
+                      unsigned int texture, object_type type, bool visible, aabb new_col)
 {
     model_primitive c;
     if (model_type != MODEL_CUSTOM)
@@ -553,8 +587,7 @@ void level::addObject(model_primitive_type model_type, std::string mpath, std::s
     c.Put(pos); // second call to set last_position as well
     c.Scale(scale);
     c.Image(texture);
-    aabb col = makeAABB(pos, scale);
-    objects.push_back({c, col, type});
+    objects.push_back({c, new_col, type});
     deleteOctree();
 }
 void level::removeObjectAtIndex(unsigned int index)

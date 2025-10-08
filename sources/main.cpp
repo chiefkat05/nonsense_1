@@ -199,7 +199,10 @@ int main()
     loop = [&]
     {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        glClearColor(0.0, 0.0, 0.0, 1.0);
+        if (!debugMode)
+            glClearColor(0.0, 0.0, 0.0, 1.0);
+        else
+            glClearColor(0.2, 0.2, 1.0, 1.0);
 
         frame_accumulation += delta_time;
 

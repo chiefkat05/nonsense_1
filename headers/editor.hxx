@@ -49,7 +49,7 @@ private:
     level_variable temp_variable;
     ui_object temp_ui;
 
-    model_primitive collider_visual; // yessss
+    std::vector<model_primitive> collider_visuals; // yessss
 
     unsigned int edit_line = 0;
     int updateNum = 0;
@@ -81,18 +81,24 @@ public:
     }
     void drawCollider(shader shad, double pscale, double alpha)
     {
+        for (int i = 0; i < collider_visuals.size(); ++i)
+        {
+            collider_visuals[i].Put(mainGame.getCurrentLevel()->getObjectAtIndex(i)->collider.pos);
+            collider_visuals[i].Scale(mainGame.getCurrentLevel()->getObjectAtIndex(i)->collider.scale);
+            collider_visuals[i].SetColor(0.5, 0.0, 0.0, 0.5);
+            if (i == selectedObj)
+            {
+                collider_visuals[i].SetColor(0.5, 0.0, 0.0, 0.9);
+            }
+
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINES);
+            collider_visuals[i].draw(shad, pscale, alpha);
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        }
         if (selectedObj == -1)
             return;
 
         level_object *obj = mainGame.getCurrentLevel()->getObjectAtIndex(selectedObj);
-
-        collider_visual.Put(obj->collider.pos);
-        collider_visual.Scale(obj->collider.scale);
-        collider_visual.SetColor(0.0, 0.0, 0.0);
-
-        glPolygonMode(GL_FRONT_AND_BACK, GL_LINES);
-        collider_visual.draw(shad, pscale, alpha);
-        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     }
 
     void newObject()
@@ -104,7 +110,7 @@ public:
             std::cout << "New object error: failed to open " << temp_path << "\n";
             return;
         }
-        output << "object cube 0.0 0.0 0.0 1.0 1.0 1.0 0 0";
+        output << "object cube 0.0 0.0 0.0 1.0 1.0 1.0 0 0 end";
         output.close();
         mainGame.getCurrentLevel()->addLine();
 
@@ -138,7 +144,13 @@ public:
                    << std::to_string(obj->visual.getScale().y) << " "
                    << std::to_string(obj->visual.getScale().z) << " "
                    << std::to_string(obj->visual.getImage()) << " "
-                   << std::to_string(obj->type);
+                   << std::to_string(obj->type) << " col "
+                   << std::to_string(obj->collider.pos.x) << " "
+                   << std::to_string(obj->collider.pos.y) << " "
+                   << std::to_string(obj->collider.pos.z) << " "
+                   << std::to_string(obj->collider.scale.x) << " "
+                   << std::to_string(obj->collider.scale.y) << " "
+                   << std::to_string(obj->collider.scale.z) << " end";
         }
         else
         {
@@ -157,7 +169,13 @@ public:
                    << std::to_string(obj->visual.getScale().y) << " "
                    << std::to_string(obj->visual.getScale().z) << " "
                    << std::to_string(obj->visual.getImage()) << " "
-                   << std::to_string(obj->type);
+                   << std::to_string(obj->type) << " col "
+                   << std::to_string(obj->collider.pos.x) << " "
+                   << std::to_string(obj->collider.pos.y) << " "
+                   << std::to_string(obj->collider.pos.z) << " "
+                   << std::to_string(obj->collider.scale.x) << " "
+                   << std::to_string(obj->collider.scale.y) << " "
+                   << std::to_string(obj->collider.scale.z) << " end";
         }
         output.close();
         mainGame.getCurrentLevel()->addLine();
@@ -259,7 +277,7 @@ public:
         if (!obj->visual.isDynamic())
             obj->visual.makeDynamic();
 
-        collider_visual = model_primitive(MODEL_CUBE, true, true);
+        // collider_visual = model_primitive(MODEL_CUBE, true, true);
 
         switch (updateNum)
         {
@@ -275,11 +293,9 @@ public:
             break;
         case 3:
             obj->visual.SetColor(1.0, 1.0, 1.0, 0.25);
-            collider_visual.SetColor(0.5, 1.0, 0.5);
             break;
         case 4:
             obj->visual.SetColor(1.0, 1.0, 1.0, 0.25);
-            collider_visual.SetColor(1.0, 0.5, 1.0);
             break;
         default:
             break;
@@ -367,6 +383,15 @@ public:
     }
     void updateFile()
     {
+        collider_visuals.clear();
+        for (int i = 0; i < mainGame.getCurrentLevel()->getObjectCount(); ++i)
+        {
+            collider_visuals.push_back(model_primitive(MODEL_CUBE, true, true));
+            level_object *obj = mainGame.getCurrentLevel()->getObjectAtIndex(i);
+            collider_visuals[collider_visuals.size() - 1].Put(obj->collider.pos);
+            collider_visuals[collider_visuals.size() - 1].Scale(obj->collider.scale);
+        }
+
         if (selectedObj == -1)
             return;
 
@@ -421,7 +446,25 @@ public:
                         newline << (obj->visual.getImage()) << ' ';
                         break;
                     case 10:
-                        newline << word;
+                        newline << (obj->type) << " col ";
+                        break;
+                    case 11:
+                        newline << (obj->collider.pos.x) << ' ';
+                        break;
+                    case 12:
+                        newline << (obj->collider.pos.y) << ' ';
+                        break;
+                    case 13:
+                        newline << (obj->collider.pos.z) << ' ';
+                        break;
+                    case 14:
+                        newline << (obj->collider.scale.x) << ' ';
+                        break;
+                    case 15:
+                        newline << (obj->collider.scale.y) << ' ';
+                        break;
+                    case 16:
+                        newline << (obj->collider.scale.z) << " end";
                         step = -1;
                         finishedUpdate = true;
                         break;
