@@ -118,6 +118,8 @@ int main()
     // glEnable(GL_CULL_FACE); // need to re-do vertices for models to make this work properly
     // glCullFace(GL_BACK);
     // glFrontFace(GL_CCW);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     graphics_init();
 
     shader_main.use();
@@ -294,6 +296,12 @@ int main()
                 frameUpdateCount = 0;
             }
             frameUpdateCount += 1;
+
+            shader_main.setDouble("lightDistanceDetail", 5000.0);
+            shader_main.setDouble("lightRadius", 5000.0);
+            shader_main.setDouble("lightRingsCount", 5000.0);
+
+            editor_level.drawCollider(shader_main, pixel_scale, alpha_time);
         }
 
         // inter-update here

@@ -49,6 +49,8 @@ private:
     level_variable temp_variable;
     ui_object temp_ui;
 
+    model_primitive collider_visual; // yessss
+
     unsigned int edit_line = 0;
     int updateNum = 0;
     int selectedObj = -1, selectedTrigger = -1, selectedVariable = -1, selectedUI = -1;
@@ -76,6 +78,21 @@ public:
             std::remove(temp_path.c_str());
         else
             std::cout << "Error: file at " << temp_path << " cannot be deleted because it doesn't exist!\n";
+    }
+    void drawCollider(shader shad, double pscale, double alpha)
+    {
+        if (selectedObj == -1)
+            return;
+
+        level_object *obj = mainGame.getCurrentLevel()->getObjectAtIndex(selectedObj);
+
+        collider_visual.Put(obj->collider.pos);
+        collider_visual.Scale(obj->collider.scale);
+        collider_visual.SetColor(0.0, 0.0, 0.0);
+
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINES);
+        collider_visual.draw(shad, pscale, alpha);
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     }
 
     void newObject()
@@ -230,7 +247,7 @@ public:
         else if (selectedObj == closestObj)
         {
             ++updateNum;
-            if (updateNum > 2)
+            if (updateNum > 4)
             {
                 updateNum = 0;
                 selectedObj = -1;
@@ -242,6 +259,8 @@ public:
         if (!obj->visual.isDynamic())
             obj->visual.makeDynamic();
 
+        collider_visual = model_primitive(MODEL_CUBE, true, true);
+
         switch (updateNum)
         {
         case 0:
@@ -251,8 +270,16 @@ public:
             obj->visual.SetColor(1.0, 0.5, 1.0, 1.0);
             break;
         case 2:
-            obj->visual.SetColor(0.5, 0.5, 0.5, 1.0);
+            obj->visual.SetColor(1.0, 1.0, 1.0, 1.0);
             textureOffset = obj->visual.getImage();
+            break;
+        case 3:
+            obj->visual.SetColor(1.0, 1.0, 1.0, 0.25);
+            collider_visual.SetColor(0.5, 1.0, 0.5);
+            break;
+        case 4:
+            obj->visual.SetColor(1.0, 1.0, 1.0, 0.25);
+            collider_visual.SetColor(1.0, 0.5, 1.0);
             break;
         default:
             break;
@@ -292,7 +319,7 @@ public:
         {
         case 0:
             obj->visual.Move((camPos - prevCamPos));
-            obj->collider.pos = obj->visual.getPos();
+            // obj->collider.pos = obj->visual.getPos();
             break;
         case 1:
             obj->visual.Scale(obj->visual.getScale() + ((camPos - prevCamPos) * 2.0f));
@@ -308,7 +335,7 @@ public:
             {
                 obj->visual.Scale(obj->visual.getScale().x, obj->visual.getScale().y, 0.0);
             }
-            obj->collider.scale = obj->visual.getScale();
+            // obj->collider.scale = obj->visual.getScale(); // do collider seperately
             break;
         case 2:
         {
@@ -324,6 +351,16 @@ public:
             obj->visual.Image(textureOffset);
         }
         break;
+        case 3:
+            obj->collider.pos += (camPos - prevCamPos);
+            break;
+        case 4:
+            obj->collider.scale += (camPos - prevCamPos) * 2.0f;
+            for (int i = 0; i < 3; ++i)
+            {
+                obj->collider.scale[i] = std::max(obj->collider.scale[i], 0.0f);
+            }
+            break;
         default:
             break;
         }

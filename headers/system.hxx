@@ -60,6 +60,7 @@ struct octree;
 struct level_object
 {
     model_primitive visual;
+    // std::vector<aabb> colliders;
     aabb collider;
     object_type type;
     unsigned int lineIndex = 0;

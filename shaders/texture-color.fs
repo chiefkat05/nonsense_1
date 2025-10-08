@@ -9,22 +9,24 @@ uniform sampler2D texture1;
 uniform vec4 color;
 uniform vec3 playerPos;
 
+uniform float lightRadius = 6.0;
+uniform float lightDistanceDetail = 2.0;
+uniform float lightRingsCount = 2.0;
+
 void main()
 {
     vec4 lightColor = vec4(1.0, 1.0, 1.0, 1.0);
 
-    float distance = length(playerPos - fragPos) / 10.0;
-    int idist = int(distance) * 5;
+    float distance = length(playerPos - fragPos) / lightRadius;
+    int idist = int(distance * lightDistanceDetail);
     
     vec3 norm = normalize(Normals);
     vec3 lightDir = normalize(playerPos - fragPos);
 
     float diff = max(dot(norm, lightDir), 0.0);
-    int idiff = int(diff * 20.0);
-    vec3 diffuse = vec3(float(idiff) * 0.2, float(idiff) * 0.2, float(idiff) * 0.2) * lightColor.xyz;
-    // distance = float(idist);
-    // distance = max(distance * 0.001, 0.5);
-    // lightColor = vec4(diffuse / (dist * 0.2), 1.0);
+    int idiff = int(diff * lightRingsCount);
+    vec3 diffuse = vec3(float(idiff) / lightRingsCount, float(idiff) / lightRingsCount, float(idiff) / lightRingsCount) * lightColor.xyz;
+    distance = float(idist) / lightDistanceDetail;
     lightColor = vec4(diffuse * (1.0 - distance), 1.0);
 
 	vec4 texColor = texture(texture1, TexCoords);
