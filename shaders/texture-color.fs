@@ -9,9 +9,9 @@ uniform sampler2D texture1;
 uniform vec4 color;
 uniform vec3 playerPos;
 
-uniform float lightRadius = 6.0;
-uniform float lightDistanceDetail = 2.0;
-uniform float lightRingsCount = 2.0;
+uniform float lightRadius = 60.0;
+uniform float lightDistanceDetail = 20.0;
+uniform float lightRingsCount = 20.0;
 
 void main()
 {

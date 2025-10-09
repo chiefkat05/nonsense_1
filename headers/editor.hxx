@@ -335,7 +335,7 @@ public:
         {
         case 0:
             obj->visual.Move((camPos - prevCamPos));
-            // obj->collider.pos = obj->visual.getPos();
+            obj->collider.pos += (camPos - prevCamPos);
             break;
         case 1:
             obj->visual.Scale(obj->visual.getScale() + ((camPos - prevCamPos) * 2.0f));

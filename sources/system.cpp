@@ -11,6 +11,7 @@ extern const unsigned int window_height;
 extern bool window_resize;
 extern bool mousePressed;
 extern glm::vec2 mousePos;
+extern bool interacting;
 
 #include "../headers/model.hxx"
 
@@ -110,26 +111,33 @@ void game::setup_level(const char *level_path)
             {
                 static glm::vec2 ui_pos = glm::vec2(0.0);
                 static glm::vec2 ui_scale = glm::vec2(0.0);
-                unsigned int ui_texture = 0;
+                static unsigned int ui_texture = 0;
+                static std::string model_path = "", material_dir = "";
 
                 switch (step)
                 {
                 case 0:
-                    ui_pos.x = std::stod(word);
+                    model_path = word;
                     break;
                 case 1:
-                    ui_pos.y = std::stod(word);
+                    material_dir = word;
                     break;
                 case 2:
-                    ui_scale.x = std::stod(word);
+                    ui_pos.x = std::stod(word);
                     break;
                 case 3:
-                    ui_scale.y = std::stod(word);
+                    ui_pos.y = std::stod(word);
                     break;
                 case 4:
+                    ui_scale.x = std::stod(word);
+                    break;
+                case 5:
+                    ui_scale.y = std::stod(word);
+                    break;
+                case 6:
                     ui_texture = std::stoi(word);
 
-                    new_level.addUIObject(ui_pos, ui_scale, ui_texture);
+                    new_level.addUIObject(model_path, material_dir, ui_pos, ui_scale, ui_texture);
                     new_level.getUIAtIndex(new_level.getUICount() - 1)->lineIndex = lineNum - 1;
                     making = LCOMM_NONE;
                     step = -1;
@@ -305,6 +313,10 @@ void game::setup_level(const char *level_path)
                     {
                         tctype = TCAUSE_LOOKAT;
                     }
+                    else if (word == "prompt")
+                    {
+                        tctype = TCAUSE_PROMPT;
+                    }
                     else if (word == "is")
                     {
                         step = 6; // becomes 7 before next round
@@ -316,6 +328,10 @@ void game::setup_level(const char *level_path)
                     else if (word == "clicked")
                     {
                         tctype = TCAUSE_UI_CLICKED;
+                    }
+                    else if (word == "interacted")
+                    {
+                        tctype = TCAUSE_INTERACT;
                     }
                     else
                     {
@@ -372,6 +388,11 @@ void game::setup_level(const char *level_path)
                     {
                         ttype = TTYPE_FADEOUTSOUND;
                         step = 5; // becomes 6 before next round
+                    }
+                    else if (word == "text")
+                    {
+                        ttype = TTYPE_TEXT;
+                        step = 4; // becomes 5 before next round
                     }
                     else
                     {
@@ -483,6 +504,8 @@ void game::setup_level(const char *level_path)
                         break;
                     case TCAUSE_COLLISION:
                     case TCAUSE_LOOKAT:
+                    case TCAUSE_INTERACT:
+                    case TCAUSE_PROMPT:
                         new_level.addTriggerObjectCheck(new_level.getObjectCount() - 1, tctype, ttype);
                         break;
                     case TCAUSE_UI_CLICKED:
@@ -515,6 +538,9 @@ void game::setup_level(const char *level_path)
                     case TTYPE_ROTATEOBJ:
                     case TTYPE_SCALEOBJ:
                         new_level.setTriggerObjectResponse(new_level.getObjectCount() - 1, trigger_pos, trigger_time);
+                        break;
+                    case TTYPE_TEXT:
+                        new_level.setTriggerUIResponse(new_level.getUICount() - 1, trigger_time);
                         break;
                     default:
                         break;
@@ -604,12 +630,22 @@ void level::addVariable(std::string id, double value, bool global)
 {
     variables.push_back({id, value, 0, global});
 }
-void level::addUIObject(glm::vec2 pos, glm::vec2 scale, unsigned int texture)
+void level::addUIObject(std::string model_path, std::string material_dir, glm::vec2 pos, glm::vec2 scale, unsigned int texture)
 {
-    model_primitive quad(MODEL_QUAD);
+    model_primitive quad;
+    if (model_path == "" || material_dir == "" || model_path == "none" || material_dir == "none") // also test model_path for things like cube or tri and set model_primitive to those accordingly
+    {
+        quad = model_primitive(MODEL_QUAD);
+    }
+    else
+    {
+        model_data data(model_path.c_str(), material_dir.c_str());
+        quad = model_primitive(&data.data.at(0), data.data.size(), false, true);
+    }
     quad.Image(texture);
     quad.Put(-pos.x / ui_pixel_scale * ((double)current_window_width / (double)current_window_height), pos.y / ui_pixel_scale, 0.0);
     quad.Scale(scale.x / ui_pixel_scale, scale.y / ui_pixel_scale, 1.0);
+
     aabb2d ui_collider({pos * (glm::vec2((float)current_window_width, (float)current_window_height) / ui_pixel_scale),
                         glm::vec2((scale.x * (float)current_window_width / ui_pixel_scale) / ((double)window_width / (double)window_height),
                                   scale.y * (float)current_window_height / ui_pixel_scale)});
@@ -654,6 +690,11 @@ void level::setTriggerAudioResponse(std::string audioID, double time)
 void level::setTriggerLevelResponse(std::string levelStr, double time)
 {
     triggers[triggers.size() - 1].setLevelResponse(levelStr, time);
+}
+void level::setTriggerUIResponse(unsigned int uiResponseIndex, double time)
+{
+    triggers[triggers.size() - 1].setUIResponse(uiResponseIndex, time);
+    ui_objects[uiResponseIndex].visual.makeDynamic();
 }
 
 void level::reset()
@@ -912,16 +953,61 @@ void level::updateTriggerChecks(level_object &plObject, glm::vec3 &camDir)
             break;
         case TCAUSE_LOOKAT:
         {
+            if (triggers[i].triggered)
+                break;
             raycast ray = {plObject.visual.getPos() + glm::vec3(0.0, 0.5, 0.0), glm::normalize(camDir)};
             glm::vec3 hitPos = glm::vec3(0.0);
             bool raycasthit = colliding(ray, objects[triggers[i].objIndex].collider, hitPos);
 
             glm::vec3 boxmin = objects[triggers[i].objIndex].collider.pos - objects[triggers[i].objIndex].collider.scale;
             glm::vec3 boxmax = objects[triggers[i].objIndex].collider.pos + objects[triggers[i].objIndex].collider.scale;
-            if (raycasthit && !triggers[i].triggered)
+            if (raycasthit)
             {
                 triggers[i].triggered = true;
                 triggers[i].timerDown = triggers[i].time;
+            }
+        }
+        break;
+        case TCAUSE_INTERACT:
+        {
+            if (!interacting || triggers[i].triggered)
+            {
+                break;
+            }
+            raycast ray = {plObject.visual.getPos() + glm::vec3(0.0, 0.5, 0.0), glm::normalize(camDir)};
+            glm::vec3 hitPos = glm::vec3(0.0);
+            bool raycasthit = colliding(ray, objects[triggers[i].objIndex].collider, hitPos);
+
+            glm::vec3 boxmin = objects[triggers[i].objIndex].collider.pos - objects[triggers[i].objIndex].collider.scale;
+            glm::vec3 boxmax = objects[triggers[i].objIndex].collider.pos + objects[triggers[i].objIndex].collider.scale;
+            if (raycasthit)
+            {
+                triggers[i].triggered = true;
+                triggers[i].timerDown = triggers[i].time;
+            }
+        }
+        break;
+        case TCAUSE_PROMPT: // is on as long as looking at object AND timer is off (0.0)
+        {
+            if (triggers[i].timerDown > 0.0)
+            {
+                triggers[i].triggered = false;
+                break;
+            }
+            raycast ray = {plObject.visual.getPos() + glm::vec3(0.0, 0.5, 0.0), glm::normalize(camDir)};
+            glm::vec3 hitPos = glm::vec3(0.0);
+            bool raycasthit = colliding(ray, objects[triggers[i].objIndex].collider, hitPos);
+
+            glm::vec3 boxmin = objects[triggers[i].objIndex].collider.pos - objects[triggers[i].objIndex].collider.scale;
+            glm::vec3 boxmax = objects[triggers[i].objIndex].collider.pos + objects[triggers[i].objIndex].collider.scale;
+            if (raycasthit)
+            {
+                triggers[i].triggered = true;
+                if (interacting)
+                {
+                    triggers[i].timerDown = triggers[i].time;
+                    triggers[i].triggered = false;
+                }
             }
         }
         break;
@@ -970,7 +1056,17 @@ void level::updateTriggerResponses(level_object &plObject, double tick_time)
     for (int i = 0; i < getTriggerCount(); ++i)
     {
         if (!triggers[i].triggered)
+        {
+            if (triggers[i].type == TTYPE_TEXT)
+            {
+                PutUIObject(triggers[i].uiResponseIndex, -999.0, -999.0, ui_pixel_scale, current_window_width, current_window_height, window_width, window_height);
+            }
+            if (triggers[i].ctype == TCAUSE_PROMPT && triggers[i].time != 0.0)
+            {
+                triggers[i].timerDown -= 1.0 * tick_time;
+            }
             continue;
+        }
 
         if (triggers[i].timerDown < 0.0 && triggers[i].time != 0.0)
         {
@@ -1036,6 +1132,12 @@ void level::updateTriggerResponses(level_object &plObject, double tick_time)
         case TTYPE_FADEOUTSOUND:
             audio_player->set_fade_out(triggers[i].audioID, triggers[i].time);
             triggers[i].triggered = false;
+            break;
+        case TTYPE_TEXT:
+            // ui_objects[triggers[i].uiResponseIndex].visual.Put(32.0, 32.0, 0.0);
+
+            PutUIObject(triggers[i].uiResponseIndex, 32.0, 16.0, ui_pixel_scale, current_window_width, current_window_height, window_width, window_height);
+            // ui_objects[triggers[i].uiResponseIndex].
             break;
         default:
             break;

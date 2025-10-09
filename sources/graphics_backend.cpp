@@ -1459,11 +1459,6 @@ void model_primitive::draw(shader &_shader, double p_scale, double alpha)
     _shader.setMat4("model", model);
     _shader.setVec4("color", color);
 
-    if (alpha == 1.0)
-    {
-        std::cout << "Hello\n";
-    }
-
     glBindVertexArray(VAO);
     glDrawArrays(GL_TRIANGLES, 0, tri_count);
 }

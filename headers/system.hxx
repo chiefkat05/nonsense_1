@@ -31,7 +31,8 @@ enum trigger_type
     TTYPE_PLAYSOUND,
     TTYPE_STOPSOUND,
     TTYPE_FADEINSOUND,
-    TTYPE_FADEOUTSOUND
+    TTYPE_FADEOUTSOUND,
+    TTYPE_TEXT
 };
 enum trigger_cause_type
 {
@@ -42,7 +43,9 @@ enum trigger_cause_type
     TCAUSE_VARIABLELESSER,
     TCAUSE_LOOKAT,
     TCAUSE_UI_CLICKED,
-    TCAUSE_UI_HOVERED
+    TCAUSE_UI_HOVERED,
+    TCAUSE_INTERACT,
+    TCAUSE_PROMPT
 };
 enum level_command_type
 {
@@ -219,7 +222,7 @@ struct level_trigger // I think there could be a less complicated way of doing t
 {
     bool triggered = false;
     unsigned int objIndex = 0;
-    unsigned int uiIndex = 0;
+    unsigned int uiIndex = 0, uiResponseIndex = 0;
     unsigned int varCheckIndex = 0, varUpdIndex = 0;
     std::string audioID = "";
     double varValueCompare = 0.0, varUpdValue = 0.0;
@@ -254,6 +257,11 @@ struct level_trigger // I think there could be a less complicated way of doing t
     void setAudioResponse(std::string _a, double _t)
     {
         audioID = _a;
+        time = _t;
+    }
+    void setUIResponse(unsigned int _uiri, double _t)
+    {
+        uiResponseIndex = _uiri;
         time = _t;
     }
 };
@@ -350,8 +358,22 @@ public:
                    unsigned int texture, object_type type, bool visible = true, aabb new_col = makeAABB());
     void removeObjectAtIndex(unsigned int index);
     void addVariable(std::string id, double value, bool global);
-    void addUIObject(glm::vec2 pos, glm::vec2 scale, unsigned int texture);
+    void addUIObject(std::string model_path, std::string material_dir, glm::vec2 pos, glm::vec2 scale, unsigned int texture);
     void addAudio(std::string id, std::string path);
+
+    void PutUIObject(unsigned int index, double x, double y, float pscale, unsigned int current_window_width, unsigned int current_window_height, unsigned int window_width, unsigned int window_height)
+    {
+        if (index >= ui_objects.size())
+        {
+            std::cout << "Error Placing UI object at position, " << index << " is not a valid UI index." << std::endl;
+            return;
+        }
+        ui_objects[index].visual.Put(-x / pscale * ((double)current_window_width / (double)current_window_height), y / pscale, 0.0);
+
+        ui_objects[index].collider = aabb2d({glm::vec2(x, y) * (glm::vec2((float)current_window_width, (float)current_window_height) / pscale),
+                                             glm::vec2((ui_objects[index].truescale.x * (float)current_window_width / pscale) / ((double)window_width / (double)window_height),
+                                                       ui_objects[index].truescale.y * (float)current_window_height / pscale)});
+    }
 
     void addTriggerObjectCheck(unsigned int objIndex, trigger_cause_type tct, trigger_type tt);
     void addTriggerVariableCheck(unsigned int varIndex, double varValue, trigger_cause_type tct, trigger_type tt);
@@ -361,6 +383,7 @@ public:
     void setTriggerVariableResponse(unsigned int varUpdIndex, double varUpdValue, double time);
     void setTriggerAudioResponse(std::string audioID, double time);
     void setTriggerLevelResponse(std::string newLevel, double time);
+    void setTriggerUIResponse(unsigned int uiResponseIndex, double time);
 
     void reset();
     void drawLevel(shader &shad, shader &shad_ui, bool debugMode, double alpha);
