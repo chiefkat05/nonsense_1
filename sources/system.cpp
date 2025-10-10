@@ -297,6 +297,7 @@ void game::setup_level(const char *level_path)
                 static double variable_value = 0.0, variable_update_value = 0.0;
                 static std::string trigger_set_level = level_path;
                 static std::string trigger_audio_id = "";
+                static int trigger_text_ref = -1;
 
                 switch (step)
                 {
@@ -350,6 +351,16 @@ void game::setup_level(const char *level_path)
                         ttype = TTYPE_MOVEOBJ;
                         pixel_division = pixel_scale;
                     }
+                    else if (word == "put")
+                    {
+                        ttype = TTYPE_PLACEOBJ;
+                        pixel_division = 1.0;
+                    }
+                    else if (word == "pput")
+                    {
+                        ttype = TTYPE_PLACEOBJ;
+                        pixel_division = pixel_scale;
+                    }
                     else if (word == "scale")
                     {
                         ttype = TTYPE_SCALEOBJ;
@@ -392,7 +403,7 @@ void game::setup_level(const char *level_path)
                     else if (word == "text")
                     {
                         ttype = TTYPE_TEXT;
-                        step = 4; // becomes 5 before next round
+                        step = 13; // becomes 14 before next round
                     }
                     else
                     {
@@ -493,6 +504,17 @@ void game::setup_level(const char *level_path)
                     trigger_set_level = word;
                     step = 4; // becomes 5 before next round
                     break;
+                case 14:
+                    if (word == "last")
+                    {
+                        trigger_text_ref = new_level.getUICount() - 1;
+                    }
+                    else
+                    {
+                        trigger_text_ref = std::stoi(word);
+                    }
+                    step = 4; // becomes 5 next round;
+                    break;
                 default:
                 finish:
                     switch (tctype)
@@ -537,10 +559,11 @@ void game::setup_level(const char *level_path)
                     case TTYPE_MOVEOBJ:
                     case TTYPE_ROTATEOBJ:
                     case TTYPE_SCALEOBJ:
+                    case TTYPE_PLACEOBJ:
                         new_level.setTriggerObjectResponse(new_level.getObjectCount() - 1, trigger_pos, trigger_time);
                         break;
                     case TTYPE_TEXT:
-                        new_level.setTriggerUIResponse(new_level.getUICount() - 1, trigger_time);
+                        new_level.setTriggerUIResponse(trigger_text_ref, trigger_time);
                         break;
                     default:
                         break;
@@ -693,7 +716,7 @@ void level::setTriggerLevelResponse(std::string levelStr, double time)
 }
 void level::setTriggerUIResponse(unsigned int uiResponseIndex, double time)
 {
-    triggers[triggers.size() - 1].setUIResponse(uiResponseIndex, time);
+    triggers[triggers.size() - 1].setUIResponse(uiResponseIndex, ui_objects[uiResponseIndex].truepos, time);
     ui_objects[uiResponseIndex].visual.makeDynamic();
 }
 
@@ -1079,6 +1102,11 @@ void level::updateTriggerResponses(level_object &plObject, double tick_time)
             objects[triggers[i].objIndex].visual.Move(triggers[i].pos * static_cast<float>(tick_time));
             objects[triggers[i].objIndex].collider.pos = objects[triggers[i].objIndex].visual.getPos();
             break;
+        case TTYPE_PLACEOBJ:
+            objects[triggers[i].objIndex].visual.Put(triggers[i].pos * static_cast<float>(tick_time));
+            objects[triggers[i].objIndex].visual.Put(triggers[i].pos * static_cast<float>(tick_time));
+            objects[triggers[i].objIndex].collider.pos = objects[triggers[i].objIndex].visual.getPos();
+            break;
         case TTYPE_SCALEOBJ:
             objects[triggers[i].objIndex].visual.Scale(objects[triggers[i].objIndex].visual.getScale() + triggers[i].pos * static_cast<float>(tick_time));
             objects[triggers[i].objIndex].collider.scale = objects[triggers[i].objIndex].visual.getScale();
@@ -1136,7 +1164,7 @@ void level::updateTriggerResponses(level_object &plObject, double tick_time)
         case TTYPE_TEXT:
             // ui_objects[triggers[i].uiResponseIndex].visual.Put(32.0, 32.0, 0.0);
 
-            PutUIObject(triggers[i].uiResponseIndex, 32.0, 16.0, ui_pixel_scale, current_window_width, current_window_height, window_width, window_height);
+            PutUIObject(triggers[i].uiResponseIndex, triggers[i].uiResponsePos.x, triggers[i].uiResponsePos.y, ui_pixel_scale, current_window_width, current_window_height, window_width, window_height);
             // ui_objects[triggers[i].uiResponseIndex].
             break;
         default:

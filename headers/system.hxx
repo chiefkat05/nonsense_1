@@ -22,6 +22,7 @@ enum object_type
 enum trigger_type
 {
     TTYPE_MOVEOBJ,
+    TTYPE_PLACEOBJ,
     TTYPE_SCALEOBJ,
     TTYPE_ROTATEOBJ,
     TTYPE_CHANGELVL,
@@ -223,6 +224,7 @@ struct level_trigger // I think there could be a less complicated way of doing t
     bool triggered = false;
     unsigned int objIndex = 0;
     unsigned int uiIndex = 0, uiResponseIndex = 0;
+    glm::vec2 uiResponsePos = glm::vec2(0.0);
     unsigned int varCheckIndex = 0, varUpdIndex = 0;
     std::string audioID = "";
     double varValueCompare = 0.0, varUpdValue = 0.0;
@@ -259,9 +261,10 @@ struct level_trigger // I think there could be a less complicated way of doing t
         audioID = _a;
         time = _t;
     }
-    void setUIResponse(unsigned int _uiri, double _t)
+    void setUIResponse(unsigned int _uiri, glm::vec2 _uirp, double _t)
     {
         uiResponseIndex = _uiri;
+        uiResponsePos = _uirp;
         time = _t;
     }
 };
@@ -369,6 +372,7 @@ public:
             return;
         }
         ui_objects[index].visual.Put(-x / pscale * ((double)current_window_width / (double)current_window_height), y / pscale, 0.0);
+        ui_objects[index].visual.Put(ui_objects[index].visual.getPos());
 
         ui_objects[index].collider = aabb2d({glm::vec2(x, y) * (glm::vec2((float)current_window_width, (float)current_window_height) / pscale),
                                              glm::vec2((ui_objects[index].truescale.x * (float)current_window_width / pscale) / ((double)window_width / (double)window_height),

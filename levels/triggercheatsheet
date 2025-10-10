@@ -1,0 +1,5 @@
+check variable state:
+    if [var_id] equalto/greaterthan/lessthan [float]
+
+set variable state:
+    [trigger check] getvar [var_id] set/add/subtract [float] [time]

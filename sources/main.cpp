@@ -49,6 +49,8 @@ templevel editor_level;
 int debug_texture_offset = 0;
 bool debug_editing_texture = false, debug_create_obj_called = false, debug_delete_obj_called = false;
 
+double fadeOutTimer = 0.0; // come oooon so eassy put it in main hardcoded is the life bruh
+
 glm::vec3 cameraFront = glm::vec3(0.0, 0.0, -1.0);
 glm::vec3 cameraXZFront = glm::vec3(0.0, 0.0, -1.0);
 glm::vec3 up = glm::vec3(0.0, 1.0, 0.0);
