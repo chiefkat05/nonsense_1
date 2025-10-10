@@ -67,6 +67,7 @@ void game::setup_level(const char *level_path)
                 if (word == "trigger")
                 {
                     making = LCOMM_TRIGGER;
+                    step = -1;
                     continue;
                 }
                 if (word == "var")
@@ -293,7 +294,7 @@ void game::setup_level(const char *level_path)
                 static trigger_type ttype = TTYPE_MOVEOBJ;
                 static glm::vec3 trigger_pos = glm::vec3(0.0);
                 static double trigger_time = 0.0;
-                static int variable_index = -1, variable_update_index = -1;
+                static int variable_index = -1, variable_update_index = -1, trigger_lock_index = -1;
                 static double variable_value = 0.0, variable_update_value = 0.0;
                 static std::string trigger_set_level = level_path;
                 static std::string trigger_audio_id = "";
@@ -301,6 +302,16 @@ void game::setup_level(const char *level_path)
 
                 switch (step)
                 {
+                case -1:
+                    if (word == "none")
+                    {
+                        trigger_lock_index = -1;
+                    }
+                    else
+                    {
+                        trigger_lock_index = std::stoi(word);
+                    }
+                    break;
                 case 0:
                     if (word == "start")
                     {
@@ -404,6 +415,11 @@ void game::setup_level(const char *level_path)
                     {
                         ttype = TTYPE_TEXT;
                         step = 13; // becomes 14 before next round
+                    }
+                    else if (word == "notrigger")
+                    {
+                        ttype = TTYPE_NONE;
+                        goto finish;
                     }
                     else
                     {
@@ -522,20 +538,20 @@ void game::setup_level(const char *level_path)
                     case TCAUSE_VARIABLEEQUAL:
                     case TCAUSE_VARIABLEGREATER:
                     case TCAUSE_VARIABLELESSER:
-                        new_level.addTriggerVariableCheck(variable_index, variable_value, tctype, ttype);
+                        new_level.addTriggerVariableCheck(trigger_lock_index, variable_index, variable_value, tctype, ttype);
                         break;
                     case TCAUSE_COLLISION:
                     case TCAUSE_LOOKAT:
                     case TCAUSE_INTERACT:
                     case TCAUSE_PROMPT:
-                        new_level.addTriggerObjectCheck(new_level.getObjectCount() - 1, tctype, ttype);
+                        new_level.addTriggerObjectCheck(trigger_lock_index, new_level.getObjectCount() - 1, tctype, ttype);
                         break;
                     case TCAUSE_UI_CLICKED:
                     case TCAUSE_UI_HOVERED:
-                        new_level.addTriggerUICheck(new_level.getUICount() - 1, tctype, ttype);
+                        new_level.addTriggerUICheck(trigger_lock_index, new_level.getUICount() - 1, tctype, ttype);
                         break;
                     case TCAUSE_STARTGAME:
-                        new_level.addTrigger(tctype, ttype);
+                        new_level.addTrigger(trigger_lock_index, tctype, ttype);
                         break;
                     default:
                         break;
@@ -570,6 +586,10 @@ void game::setup_level(const char *level_path)
                     }
                     new_level.getTriggerAtIndex(new_level.getTriggerCount() - 1)->lineIndex = lineNum - 1;
                     making = LCOMM_NONE;
+                    tctype = TCAUSE_STARTGAME;
+                    ttype = TTYPE_NONE;
+                    trigger_time = 0.0;
+                    trigger_lock_index = -1;
                     step = -1;
                     break;
                 }
@@ -606,6 +626,7 @@ void game::update_level(double tick_time, level_object &plObject, glm::vec3 camD
     for (int i = 0; i < current_level.getUICount(); ++i)
     {
         current_level.getUIAtIndex(i)->updateButtonState();
+        current_level.getUIAtIndex(i)->positionHeld = false;
     }
     current_level.updateTriggerChecks(plObject, camDir);
     current_level.updateTriggerResponses(plObject, tick_time);
@@ -681,21 +702,21 @@ void level::addAudio(std::string id, std::string path)
     audio_player->load_audio(id, path);
 }
 
-void level::addTriggerObjectCheck(unsigned int objIndex, trigger_cause_type tct, trigger_type tt)
+void level::addTriggerObjectCheck(int triggerLockIndex, unsigned int objIndex, trigger_cause_type tct, trigger_type tt)
 {
-    triggers.push_back(level_trigger(objIndex, 0, 0, 0.0, tct, tt));
+    triggers.push_back(level_trigger(triggerLockIndex, objIndex, 0, 0, 0.0, tct, tt));
 }
-void level::addTriggerVariableCheck(unsigned int varIndex, double varValue, trigger_cause_type tct, trigger_type tt)
+void level::addTriggerVariableCheck(int triggerLockIndex, unsigned int varIndex, double varValue, trigger_cause_type tct, trigger_type tt)
 {
-    triggers.push_back(level_trigger(0, 0, varIndex, varValue, tct, tt));
+    triggers.push_back(level_trigger(triggerLockIndex, 0, 0, varIndex, varValue, tct, tt));
 }
-void level::addTriggerUICheck(unsigned int uiIndex, trigger_cause_type tct, trigger_type tt)
+void level::addTriggerUICheck(int triggerLockIndex, unsigned int uiIndex, trigger_cause_type tct, trigger_type tt)
 {
-    triggers.push_back(level_trigger(0, uiIndex, 0, 0.0, tct, tt));
+    triggers.push_back(level_trigger(triggerLockIndex, 0, uiIndex, 0, 0.0, tct, tt));
 }
-void level::addTrigger(trigger_cause_type tct, trigger_type tt)
+void level::addTrigger(int triggerLockIndex, trigger_cause_type tct, trigger_type tt)
 {
-    triggers.push_back(level_trigger(0, 0, 0, 0.0, tct, tt));
+    triggers.push_back(level_trigger(triggerLockIndex, 0, 0, 0, 0.0, tct, tt));
 }
 void level::setTriggerObjectResponse(unsigned int objIndex, glm::vec3 pos, double time)
 {
@@ -945,6 +966,12 @@ void level::updateTriggerChecks(level_object &plObject, glm::vec3 &camDir)
 {
     for (int i = 0; i < getTriggerCount(); ++i)
     {
+        if (triggers[i].triggerLockIndex != -1 && !triggers[triggers[i].triggerLockIndex].triggered && triggers[i].timerDown <= 0.0)
+        {
+            triggers[i].triggered = false;
+            triggers[i].timerDown = 0.0;
+            continue;
+        }
         switch (triggers[i].ctype)
         {
         case TCAUSE_STARTGAME:
@@ -976,7 +1003,7 @@ void level::updateTriggerChecks(level_object &plObject, glm::vec3 &camDir)
             break;
         case TCAUSE_LOOKAT:
         {
-            if (triggers[i].triggered)
+            if (triggers[i].triggered && triggers[i].time > 0.0)
                 break;
             raycast ray = {plObject.visual.getPos() + glm::vec3(0.0, 0.5, 0.0), glm::normalize(camDir)};
             glm::vec3 hitPos = glm::vec3(0.0);
@@ -988,12 +1015,17 @@ void level::updateTriggerChecks(level_object &plObject, glm::vec3 &camDir)
             {
                 triggers[i].triggered = true;
                 triggers[i].timerDown = triggers[i].time;
+            }
+            else
+            {
+                triggers[i].triggered = false;
+                triggers[i].timerDown = 0.0;
             }
         }
         break;
         case TCAUSE_INTERACT:
         {
-            if (!interacting || triggers[i].triggered)
+            if (triggers[i].triggered && triggers[i].time > 0.0)
             {
                 break;
             }
@@ -1003,10 +1035,15 @@ void level::updateTriggerChecks(level_object &plObject, glm::vec3 &camDir)
 
             glm::vec3 boxmin = objects[triggers[i].objIndex].collider.pos - objects[triggers[i].objIndex].collider.scale;
             glm::vec3 boxmax = objects[triggers[i].objIndex].collider.pos + objects[triggers[i].objIndex].collider.scale;
-            if (raycasthit)
+            if (raycasthit && interacting)
             {
                 triggers[i].triggered = true;
                 triggers[i].timerDown = triggers[i].time;
+            }
+            else if (!raycasthit)
+            {
+                triggers[i].triggered = false;
+                triggers[i].timerDown = 0.0;
             }
         }
         break;
@@ -1080,7 +1117,7 @@ void level::updateTriggerResponses(level_object &plObject, double tick_time)
     {
         if (!triggers[i].triggered)
         {
-            if (triggers[i].type == TTYPE_TEXT)
+            if (triggers[i].type == TTYPE_TEXT && !ui_objects[triggers[i].uiResponseIndex].positionHeld)
             {
                 PutUIObject(triggers[i].uiResponseIndex, -999.0, -999.0, ui_pixel_scale, current_window_width, current_window_height, window_width, window_height);
             }
@@ -1162,10 +1199,14 @@ void level::updateTriggerResponses(level_object &plObject, double tick_time)
             triggers[i].triggered = false;
             break;
         case TTYPE_TEXT:
-            // ui_objects[triggers[i].uiResponseIndex].visual.Put(32.0, 32.0, 0.0);
-
+            ui_objects[triggers[i].uiResponseIndex].positionHeld = true;
             PutUIObject(triggers[i].uiResponseIndex, triggers[i].uiResponsePos.x, triggers[i].uiResponsePos.y, ui_pixel_scale, current_window_width, current_window_height, window_width, window_height);
-            // ui_objects[triggers[i].uiResponseIndex].
+            break;
+        case TTYPE_NONE:
+            // if ((triggers[i].time == triggers[i].timerDown || triggers[i].time == 0.0))
+            // {
+            triggers[i].triggered = false;
+            // }
             break;
         default:
             break;

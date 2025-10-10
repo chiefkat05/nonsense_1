@@ -21,6 +21,7 @@ enum object_type
 };
 enum trigger_type
 {
+    TTYPE_NONE,
     TTYPE_MOVEOBJ,
     TTYPE_PLACEOBJ,
     TTYPE_SCALEOBJ,
@@ -235,8 +236,10 @@ struct level_trigger // I think there could be a less complicated way of doing t
     std::string newLevel = "";
     unsigned int lineIndex = 0;
 
-    level_trigger(unsigned int _oi, unsigned int _ui, unsigned int _vci, double _vvc, trigger_cause_type _ct, trigger_type _t)
-        : objIndex(_oi), uiIndex(_ui), varCheckIndex(_vci), varValueCompare(_vvc), ctype(_ct), type(_t) {}
+    unsigned int triggerLockIndex = 0;
+
+    level_trigger(unsigned int _tli, unsigned int _oi, unsigned int _ui, unsigned int _vci, double _vvc, trigger_cause_type _ct, trigger_type _t)
+        : triggerLockIndex(_tli), objIndex(_oi), uiIndex(_ui), varCheckIndex(_vci), varValueCompare(_vvc), ctype(_ct), type(_t) {}
     level_trigger() {}
 
     void setObjResponse(unsigned int _oi, glm::vec3 _p, double _t)
@@ -284,6 +287,7 @@ struct ui_object
     unsigned int lineIndex = 0;
     glm::vec2 truepos = glm::vec2(0.0), truescale = glm::vec2(1.0);
     bool held = false, released = false, clicked = false, hovered;
+    bool positionHeld = false;
 
     void updateSize(bool window_resized);
     void updateButtonState();
@@ -379,10 +383,10 @@ public:
                                                        ui_objects[index].truescale.y * (float)current_window_height / pscale)});
     }
 
-    void addTriggerObjectCheck(unsigned int objIndex, trigger_cause_type tct, trigger_type tt);
-    void addTriggerVariableCheck(unsigned int varIndex, double varValue, trigger_cause_type tct, trigger_type tt);
-    void addTriggerUICheck(unsigned int uiIndex, trigger_cause_type tct, trigger_type tt);
-    void addTrigger(trigger_cause_type tct, trigger_type tt);
+    void addTriggerObjectCheck(int triggerLockIndex, unsigned int objIndex, trigger_cause_type tct, trigger_type tt);
+    void addTriggerVariableCheck(int triggerLockIndex, unsigned int varIndex, double varValue, trigger_cause_type tct, trigger_type tt);
+    void addTriggerUICheck(int triggerLockIndex, unsigned int uiIndex, trigger_cause_type tct, trigger_type tt);
+    void addTrigger(int triggerLockIndex, trigger_cause_type tct, trigger_type tt);
     void setTriggerObjectResponse(unsigned int objIndex, glm::vec3 pos, double time);
     void setTriggerVariableResponse(unsigned int varUpdIndex, double varUpdValue, double time);
     void setTriggerAudioResponse(std::string audioID, double time);
